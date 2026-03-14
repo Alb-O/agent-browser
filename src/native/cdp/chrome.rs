@@ -112,6 +112,7 @@ fn build_chrome_args(options: &LaunchOptions) -> Result<ChromeArgs, String> {
 		"--disable-popup-blocking".to_string(),
 		"--disable-prompt-on-repost".to_string(),
 		"--disable-sync".to_string(),
+		"--disable-blink-features=AutomationControlled".to_string(),
 		"--disable-features=Translate".to_string(),
 		"--enable-features=NetworkService,NetworkServiceInProcess".to_string(),
 		"--metrics-recording-only".to_string(),
@@ -169,6 +170,7 @@ fn build_chrome_args(options: &LaunchOptions) -> Result<ChromeArgs, String> {
 	}
 
 	args.extend(options.args.iter().cloned());
+	ensure_automation_controlled_disabled(&mut args);
 
 	if should_disable_sandbox(&args) {
 		args.push("--no-sandbox".to_string());
@@ -178,6 +180,42 @@ fn build_chrome_args(options: &LaunchOptions) -> Result<ChromeArgs, String> {
 		args,
 		temp_user_data_dir,
 	})
+}
+
+fn ensure_automation_controlled_disabled(args: &mut Vec<String>) {
+	let mut blink_flag_indices = Vec::new();
+	let mut features: Vec<String> = Vec::new();
+
+	for (idx, arg) in args.iter().enumerate() {
+		if let Some(raw_features) = arg.strip_prefix("--disable-blink-features=") {
+			blink_flag_indices.push(idx);
+			for feature in raw_features
+				.split(',')
+				.map(str::trim)
+				.filter(|feature| !feature.is_empty())
+			{
+				if !features.iter().any(|existing| existing == feature) {
+					features.push(feature.to_string());
+				}
+			}
+		}
+	}
+
+	if !features.iter().any(|feature| feature == "AutomationControlled") {
+		features.push("AutomationControlled".to_string());
+	}
+
+	let merged_flag = format!("--disable-blink-features={}", features.join(","));
+
+	if let Some(first_idx) = blink_flag_indices.first().copied() {
+		args[first_idx] = merged_flag;
+		for idx in blink_flag_indices.into_iter().skip(1).rev() {
+			args.remove(idx);
+		}
+		return;
+	}
+
+	args.push(merged_flag);
 }
 
 pub fn launch_chrome(options: &LaunchOptions) -> Result<ChromeProcess, String> {
@@ -724,6 +762,27 @@ mod tests {
 				.iter()
 				.any(|a| a.contains("--disable-features") && a.contains("Translate"))
 		);
+		if let Some(ref dir) = result.temp_user_data_dir {
+			let _ = std::fs::remove_dir_all(dir);
+		}
+	}
+
+	#[test]
+	fn test_build_args_merges_automation_controlled_into_existing_blink_features() {
+		let opts = LaunchOptions {
+			args: vec!["--disable-blink-features=Foo,Bar".to_string()],
+			..Default::default()
+		};
+		let result = build_chrome_args(&opts).unwrap();
+		let blink_flags: Vec<&String> = result
+			.args
+			.iter()
+			.filter(|arg| arg.starts_with("--disable-blink-features="))
+			.collect();
+		assert_eq!(blink_flags.len(), 1);
+		assert!(blink_flags[0].contains("Foo"));
+		assert!(blink_flags[0].contains("Bar"));
+		assert!(blink_flags[0].contains("AutomationControlled"));
 		if let Some(ref dir) = result.temp_user_data_dir {
 			let _ = std::fs::remove_dir_all(dir);
 		}
