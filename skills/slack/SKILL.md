@@ -28,11 +28,11 @@ agent-browser snapshot -i
 
 ## Core Workflow
 
-1. **Connect/Navigate**: Open or connect to Slack
-2. **Snapshot**: Get interactive elements with refs (`@e1`, `@e2`, etc.)
-3. **Navigate**: Click tabs, expand sections, or navigate to specific channels
-4. **Extract/Interact**: Read data or perform actions
-5. **Screenshot**: Capture evidence of findings
+1. Connect/Navigate: Open or connect to Slack
+2. Snapshot: Get interactive elements with refs (`@e1`, `@e2`, etc.)
+3. Navigate: Click tabs, expand sections, or navigate to specific channels
+4. Extract/Interact: Read data or perform actions
+5. Screenshot: Capture evidence of findings
 
 ```bash
 # Example: Check unread channels
@@ -162,6 +162,7 @@ Understanding Slack's sidebar helps you navigate efficiently:
 ```
 
 Key refs to look for:
+
 - `@e12` - Home tab (usually)
 - `@e13` - DMs tab
 - `@e14` - Activity tab
@@ -171,10 +172,11 @@ Key refs to look for:
 ## Tabs in Slack
 
 After clicking on a channel, you'll see tabs:
-- **Messages** - Channel conversation
-- **Files** - Shared files
-- **Pins** - Pinned messages
-- **Add canvas** - Collaborative canvas
+
+- Messages - Channel conversation
+- Files - Shared files
+- Pins - Pinned messages
+- Add canvas - Collaborative canvas
 - Other tabs depending on workspace setup
 
 Click tab refs to switch views and get different information.
@@ -211,20 +213,20 @@ agent-browser snapshot -i | grep -c "treeitem"
 
 ## Best Practices
 
-- **Connect to existing sessions**: Use `agent-browser connect 9222` if Slack is already open. This is faster than opening a new browser.
-- **Take snapshots before clicking**: Always `snapshot -i` to identify refs before clicking buttons.
-- **Re-snapshot after navigation**: After navigating to a new channel or section, take a fresh snapshot to find new refs.
-- **Use JSON snapshots for parsing**: When you need to extract structured data, use `snapshot --json` for machine-readable output.
-- **Pace interactions**: Add `sleep 1` between rapid interactions to let the UI update.
-- **Check accessibility tree**: The accessibility tree shows what screen readers (and your automation) can see. If an element isn't in the snapshot, it may be hidden or require scrolling.
-- **Scroll in sidebar**: Use `agent-browser scroll down 300 --selector ".p-sidebar"` to scroll within the Slack sidebar if channel list is long.
+- Connect to existing sessions: Use `agent-browser connect 9222` if Slack is already open. This is faster than opening a new browser.
+- Take snapshots before clicking: Always `snapshot -i` to identify refs before clicking buttons.
+- Re-snapshot after navigation: After navigating to a new channel or section, take a fresh snapshot to find new refs.
+- Use JSON snapshots for parsing: When you need to extract structured data, use `snapshot --json` for machine-readable output.
+- Pace interactions: Add `sleep 1` between rapid interactions to let the UI update.
+- Check accessibility tree: The accessibility tree shows what screen readers (and your automation) can see. If an element isn't in the snapshot, it may be hidden or require scrolling.
+- Scroll in sidebar: Use `agent-browser scroll down 300 --selector ".p-sidebar"` to scroll within the Slack sidebar if channel list is long.
 
 ## Limitations
 
-- **Cannot access Slack API**: This uses browser automation, not the Slack API. No OAuth, webhooks, or bot tokens needed.
-- **Session-specific**: Screenshots and snapshots are tied to the current browser session.
-- **Rate limiting**: Slack may rate-limit rapid interactions. Add delays between commands if needed.
-- **Workspace-specific**: You interact with your own workspace -- no cross-workspace automation.
+- Cannot access Slack API: This uses browser automation, not the Slack API. No OAuth, webhooks, or bot tokens needed.
+- Session-specific: Screenshots and snapshots are tied to the current browser session.
+- Rate limiting: Slack may rate-limit rapid interactions. Add delays between commands if needed.
+- Workspace-specific: You interact with your own workspace -- no cross-workspace automation.
 
 ## Debugging
 
@@ -289,6 +291,6 @@ echo "See activity.png, dms.png, and unreads.png for full details"
 
 ## References
 
-- **Slack docs**: https://slack.com/help
-- **Web experience**: https://app.slack.com
-- **Keyboard shortcuts**: Type `?` in Slack for shortcut list
+- Slack docs: https://slack.com/help
+- Web experience: https://app.slack.com
+- Keyboard shortcuts: Type `?` in Slack for shortcut list

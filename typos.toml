@@ -1,0 +1,11 @@
+[files]
+extend-exclude = ["cdp-protocol/*.json"]
+
+[default.extend-identifiers]
+udid = "udid"
+UDID = "UDID"
+
+[default.extend-words]
+mis = "mis"
+udid = "udid"
+UDID = "UDID"

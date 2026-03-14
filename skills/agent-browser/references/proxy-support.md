@@ -2,7 +2,7 @@
 
 Proxy configuration for geo-testing, rate limiting avoidance, and corporate environments.
 
-**Related**: [commands.md](commands.md) for global options, [SKILL.md](../SKILL.md) for quick start.
+Related: [commands.md](commands.md) for global options, [SKILL.md](../SKILL.md) for quick start.
 
 ## Contents
 
@@ -187,8 +187,8 @@ export NO_PROXY="*.cdn.com,*.static.com"  # Direct CDN access
 
 ## Best Practices
 
-1. **Use environment variables** - Don't hardcode proxy credentials
-2. **Set NO_PROXY appropriately** - Avoid routing local traffic through proxy
-3. **Test proxy before automation** - Verify connectivity with simple requests
-4. **Handle proxy failures gracefully** - Implement retry logic for unstable proxies
-5. **Rotate proxies for large scraping jobs** - Distribute load and avoid bans
+1. Use environment variables - Don't hardcode proxy credentials
+2. Set NO_PROXY appropriately - Avoid routing local traffic through proxy
+3. Test proxy before automation - Verify connectivity with simple requests
+4. Handle proxy failures gracefully - Implement retry logic for unstable proxies
+5. Rotate proxies for large scraping jobs - Distribute load and avoid bans

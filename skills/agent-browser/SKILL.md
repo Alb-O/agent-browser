@@ -12,10 +12,10 @@ The CLI uses Chrome/Chromium via CDP directly. Install via `npm i -g agent-brows
 
 Every browser automation follows this pattern:
 
-1. **Navigate**: `agent-browser open <url>`
-2. **Snapshot**: `agent-browser snapshot -i` (get element refs like `@e1`, `@e2`)
-3. **Interact**: Use refs to click, fill, select
-4. **Re-snapshot**: After navigation or DOM changes, get fresh refs
+1. Navigate: `agent-browser open <url>`
+2. Snapshot: `agent-browser snapshot -i` (get element refs like `@e1`, `@e2`)
+3. Interact: Use refs to click, fill, select
+4. Re-snapshot: After navigation or DOM changes, get fresh refs
 
 ```bash
 agent-browser open https://example.com/form
@@ -44,13 +44,13 @@ agent-browser fill @e1 "user@example.com" && agent-browser fill @e2 "password123
 agent-browser open https://example.com && agent-browser wait --load networkidle && agent-browser screenshot page.png
 ```
 
-**When to chain:** Use `&&` when you don't need to read the output of an intermediate command before proceeding (e.g., open + wait + screenshot). Run commands separately when you need to parse the output first (e.g., snapshot to discover refs, then interact using those refs).
+When to chain: Use `&&` when you don't need to read the output of an intermediate command before proceeding (e.g., open + wait + screenshot). Run commands separately when you need to parse the output first (e.g., snapshot to discover refs, then interact using those refs).
 
 ## Handling Authentication
 
 When automating a site that requires login, choose the approach that fits:
 
-**Option 1: Import auth from the user's browser (fastest for one-off tasks)**
+Option 1: Import auth from the user's browser (fastest for one-off tasks)
 
 ```bash
 # Connect to the user's running Chrome (they're already logged in)
@@ -61,7 +61,7 @@ agent-browser --state ./auth.json open https://app.example.com/dashboard
 
 State files contain session tokens in plaintext -- add to `.gitignore` and delete when no longer needed. Set `AGENT_BROWSER_ENCRYPTION_KEY` for encryption at rest.
 
-**Option 2: Persistent profile (simplest for recurring tasks)**
+Option 2: Persistent profile (simplest for recurring tasks)
 
 ```bash
 # First run: login manually or via automation
@@ -72,7 +72,7 @@ agent-browser --profile ~/.myapp open https://app.example.com/login
 agent-browser --profile ~/.myapp open https://app.example.com/dashboard
 ```
 
-**Option 3: Session name (auto-save/restore cookies + localStorage)**
+Option 3: Session name (auto-save/restore cookies + localStorage)
 
 ```bash
 agent-browser --session-name myapp open https://app.example.com/login
@@ -83,14 +83,14 @@ agent-browser close  # State auto-saved
 agent-browser --session-name myapp open https://app.example.com/dashboard
 ```
 
-**Option 4: Auth vault (credentials stored encrypted, login by name)**
+Option 4: Auth vault (credentials stored encrypted, login by name)
 
 ```bash
 echo "$PASSWORD" | agent-browser auth save myapp --url https://app.example.com/login --username user --password-stdin
 agent-browser auth login myapp
 ```
 
-**Option 5: State file (manual save/load)**
+Option 5: State file (manual save/load)
 
 ```bash
 # After logging in:
@@ -361,9 +361,9 @@ agent-browser -p ios screenshot mobile.png
 agent-browser -p ios close
 ```
 
-**Requirements:** macOS with Xcode, Appium (`npm install -g appium && appium driver install xcuitest`)
+Requirements: macOS with Xcode, Appium (`npm install -g appium && appium driver install xcuitest`)
 
-**Real devices:** Works with physical iOS devices if pre-configured. Use `--device "<UDID>"` where UDID is from `xcrun xctrace list devices`.
+Real devices: Works with physical iOS devices if pre-configured. Use `--device "<UDID>"` where UDID is from `xcrun xctrace list devices`.
 
 ## Security
 
@@ -541,7 +541,7 @@ agent-browser find testid "submit-btn" click
 
 ## JavaScript Evaluation (eval)
 
-Use `eval` to run JavaScript in the browser context. **Shell quoting can corrupt complex expressions** -- use `--stdin` or `-b` to avoid issues.
+Use `eval` to run JavaScript in the browser context. Shell quoting can corrupt complex expressions -- use `--stdin` or `-b` to avoid issues.
 
 ```bash
 # Simple expressions work with regular quoting
@@ -561,9 +561,9 @@ EVALEOF
 agent-browser eval -b "$(echo -n 'Array.from(document.querySelectorAll("a")).map(a => a.href)' | base64)"
 ```
 
-**Why this matters:** When the shell processes your command, inner double quotes, `!` characters (history expansion), backticks, and `$()` can all corrupt the JavaScript before it reaches agent-browser. The `--stdin` and `-b` flags bypass shell interpretation entirely.
+Why this matters: When the shell processes your command, inner double quotes, `!` characters (history expansion), backticks, and `$()` can all corrupt the JavaScript before it reaches agent-browser. The `--stdin` and `-b` flags bypass shell interpretation entirely.
 
-**Rules of thumb:**
+Rules of thumb:
 
 - Single-line, no nested quotes -> regular `eval 'expression'` with single quotes is fine
 - Nested quotes, arrow functions, template literals, or multiline -> use `eval --stdin <<'EVALEOF'`
@@ -612,6 +612,7 @@ agent-browser --engine lightpanda --executable-path /path/to/lightpanda open exa
 ```
 
 Supported engines:
+
 - `chrome` (default) -- Chrome/Chromium via CDP
 - `lightpanda` -- Lightpanda headless browser via CDP (10x faster, 10x less memory than Chrome)
 

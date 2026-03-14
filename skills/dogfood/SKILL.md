@@ -10,15 +10,15 @@ Systematically explore a web application, find issues, and produce a report with
 
 ## Setup
 
-Only the **Target URL** is required. Everything else has sensible defaults -- use them unless the user explicitly provides an override.
+Only the Target URL is required. Everything else has sensible defaults -- use them unless the user explicitly provides an override.
 
-| Parameter | Default | Example override |
-|-----------|---------|-----------------|
-| **Target URL** | _(required)_ | `vercel.com`, `http://localhost:3000` |
-| **Session name** | Slugified domain (e.g., `vercel.com` -> `vercel-com`) | `--session my-session` |
-| **Output directory** | `./dogfood-output/` | `Output directory: /tmp/qa` |
-| **Scope** | Full app | `Focus on the billing page` |
-| **Authentication** | None | `Sign in to user@example.com` |
+| Parameter        | Default                                               | Example override                      |
+| ---------------- | ----------------------------------------------------- | ------------------------------------- |
+| Target URL       | _(required)_                                          | `vercel.com`, `http://localhost:3000` |
+| Session name     | Slugified domain (e.g., `vercel.com` -> `vercel-com`) | `--session my-session`                |
+| Output directory | `./dogfood-output/`                                   | `Output directory: /tmp/qa`           |
+| Scope            | Full app                                              | `Focus on the billing page`           |
+| Authentication   | None                                                  | `Sign in to user@example.com`         |
 
 If the user says something like "dogfood vercel.com", start immediately with defaults. Do not ask clarifying questions unless authentication is mentioned but credentials are missing.
 
@@ -90,7 +90,7 @@ Identify the main navigation elements and map out the sections to visit.
 
 Read [references/issue-taxonomy.md](references/issue-taxonomy.md) for the full list of what to look for and the exploration checklist.
 
-**Strategy -- work through the app systematically:**
+Strategy -- work through the app systematically:
 
 - Start from the main navigation. Visit each top-level section.
 - Within each section, test interactive elements: click buttons, fill forms, open dropdowns/modals.
@@ -98,7 +98,7 @@ Read [references/issue-taxonomy.md](references/issue-taxonomy.md) for the full l
 - Try realistic end-to-end workflows (create, edit, delete flows).
 - Check the browser console for errors periodically.
 
-**At each page:**
+At each page:
 
 ```bash
 agent-browser --session {SESSION} snapshot -i
@@ -115,19 +115,19 @@ Steps 4 and 5 happen together -- explore and document in a single pass. When you
 
 Every issue must be reproducible. When you find something wrong, do not just note it -- prove it with evidence. The goal is that someone reading the report can see exactly what happened and replay it.
 
-**Choose the right level of evidence for the issue:**
+Choose the right level of evidence for the issue:
 
 #### Interactive / behavioral issues (functional, ux, console errors on action)
 
 These require user interaction to reproduce -- use full repro with video and step-by-step screenshots:
 
-1. **Start a repro video** _before_ reproducing:
+1. Start a repro video _before_ reproducing:
 
 ```bash
 agent-browser --session {SESSION} record start {OUTPUT_DIR}/videos/issue-{NNN}-repro.webm
 ```
 
-2. **Walk through the steps at human pace.** Pause 1-2 seconds between actions so the video is watchable. Take a screenshot at each step:
+2. Walk through the steps at human pace. Pause 1-2 seconds between actions so the video is watchable. Take a screenshot at each step:
 
 ```bash
 agent-browser --session {SESSION} screenshot {OUTPUT_DIR}/screenshots/issue-{NNN}-step-1.png
@@ -139,14 +139,14 @@ sleep 1
 # ...continue until the issue manifests
 ```
 
-3. **Capture the broken state.** Pause so the viewer can see it, then take an annotated screenshot:
+3. Capture the broken state. Pause so the viewer can see it, then take an annotated screenshot:
 
 ```bash
 sleep 2
 agent-browser --session {SESSION} screenshot --annotate {OUTPUT_DIR}/screenshots/issue-{NNN}-result.png
 ```
 
-4. **Stop the video:**
+4. Stop the video:
 
 ```bash
 agent-browser --session {SESSION} record stop
@@ -162,19 +162,19 @@ These are visible without interaction -- a single annotated screenshot is suffic
 agent-browser --session {SESSION} screenshot --annotate {OUTPUT_DIR}/screenshots/issue-{NNN}.png
 ```
 
-Write a brief description and reference the screenshot in the report. Set **Repro Video** to `N/A`.
+Write a brief description and reference the screenshot in the report. Set Repro Video to `N/A`.
 
----
+______________________________________________________________________
 
-**For all issues:**
+For all issues:
 
-1. **Append to the report immediately.** Do not batch issues for later. Write each one as you find it so nothing is lost if the session is interrupted.
+1. Append to the report immediately. Do not batch issues for later. Write each one as you find it so nothing is lost if the session is interrupted.
 
-2. **Increment the issue counter** (ISSUE-001, ISSUE-002, ...).
+2. Increment the issue counter (ISSUE-001, ISSUE-002, ...).
 
 ### 6. Wrap Up
 
-Aim to find **5-10 well-documented issues**, then wrap up. Depth of evidence matters more than total count -- 5 issues with full repro beats 20 with vague descriptions.
+Aim to find 5-10 well-documented issues, then wrap up. Depth of evidence matters more than total count -- 5 issues with full repro beats 20 with vague descriptions.
 
 After exploring:
 
@@ -189,32 +189,32 @@ agent-browser --session {SESSION} close
 
 ## Guidance
 
-- **Repro is everything.** Every issue needs proof -- but match the evidence to the issue. Interactive bugs need video and step-by-step screenshots. Static bugs (typos, placeholder text, visual glitches visible on load) only need a single annotated screenshot.
-- **Verify reproducibility before collecting evidence.** Before recording video or taking screenshots, verify the issue is reproducible with at least one retry. If it can't be reproduced consistently, it's not a valid issue.
-- **Don't record video for static issues.** A typo or clipped text doesn't benefit from a video. Save video for issues that involve user interaction, timing, or state changes.
-- **For interactive issues, screenshot each step.** Capture the before, the action, and the after -- so someone can see the full sequence.
-- **Write repro steps that map to screenshots.** Each numbered step in the report should reference its corresponding screenshot. A reader should be able to follow the steps visually without touching a browser.
-- **Use the right snapshot command.**
+- Repro is everything. Every issue needs proof -- but match the evidence to the issue. Interactive bugs need video and step-by-step screenshots. Static bugs (typos, placeholder text, visual glitches visible on load) only need a single annotated screenshot.
+- Verify reproducibility before collecting evidence. Before recording video or taking screenshots, verify the issue is reproducible with at least one retry. If it can't be reproduced consistently, it's not a valid issue.
+- Don't record video for static issues. A typo or clipped text doesn't benefit from a video. Save video for issues that involve user interaction, timing, or state changes.
+- For interactive issues, screenshot each step. Capture the before, the action, and the after -- so someone can see the full sequence.
+- Write repro steps that map to screenshots. Each numbered step in the report should reference its corresponding screenshot. A reader should be able to follow the steps visually without touching a browser.
+- Use the right snapshot command.
   - `snapshot -i` — for finding clickable/fillable elements (buttons, inputs, links)
   - `snapshot` (no flag) — for reading page content (text, headings, data lists)
-- **Be thorough but use judgment.** You are not following a test script -- you are exploring like a real user would. If something feels off, investigate.
-- **Write findings incrementally.** Append each issue to the report as you discover it. If the session is interrupted, findings are preserved. Never batch all issues for the end.
-- **Never delete output files.** Do not `rm` screenshots, videos, or the report mid-session. Do not close the session and restart. Work forward, not backward.
-- **Never read the target app's source code.** You are testing as a user, not auditing code. Do not read HTML, JS, or config files of the app under test. All findings must come from what you observe in the browser.
-- **Check the console.** Many issues are invisible in the UI but show up as JS errors or failed requests.
-- **Test like a user, not a robot.** Try common workflows end-to-end. Click things a real user would click. Enter realistic data.
-- **Type like a human.** When filling form fields during video recording, use `type` instead of `fill` -- it types character-by-character. Use `fill` only outside of video recording when speed matters.
-- **Pace repro videos for humans.** Add `sleep 1` between actions and `sleep 2` before the final result screenshot. Videos should be watchable at 1x speed -- a human reviewing the report needs to see what happened, not a blur of instant state changes.
-- **Be efficient with commands.** Batch multiple `agent-browser` commands in a single shell call when they are independent (e.g., `agent-browser ... screenshot ... && agent-browser ... console`). Use `agent-browser --session {SESSION} scroll down 300` for scrolling -- do not use `key` or `evaluate` to scroll.
+- Be thorough but use judgment. You are not following a test script -- you are exploring like a real user would. If something feels off, investigate.
+- Write findings incrementally. Append each issue to the report as you discover it. If the session is interrupted, findings are preserved. Never batch all issues for the end.
+- Never delete output files. Do not `rm` screenshots, videos, or the report mid-session. Do not close the session and restart. Work forward, not backward.
+- Never read the target app's source code. You are testing as a user, not auditing code. Do not read HTML, JS, or config files of the app under test. All findings must come from what you observe in the browser.
+- Check the console. Many issues are invisible in the UI but show up as JS errors or failed requests.
+- Test like a user, not a robot. Try common workflows end-to-end. Click things a real user would click. Enter realistic data.
+- Type like a human. When filling form fields during video recording, use `type` instead of `fill` -- it types character-by-character. Use `fill` only outside of video recording when speed matters.
+- Pace repro videos for humans. Add `sleep 1` between actions and `sleep 2` before the final result screenshot. Videos should be watchable at 1x speed -- a human reviewing the report needs to see what happened, not a blur of instant state changes.
+- Be efficient with commands. Batch multiple `agent-browser` commands in a single shell call when they are independent (e.g., `agent-browser ... screenshot ... && agent-browser ... console`). Use `agent-browser --session {SESSION} scroll down 300` for scrolling -- do not use `key` or `evaluate` to scroll.
 
 ## References
 
-| Reference | When to Read |
-|-----------|--------------|
+| Reference                                                    | When to Read                                                                           |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | [references/issue-taxonomy.md](references/issue-taxonomy.md) | Start of session -- calibrate what to look for, severity levels, exploration checklist |
 
 ## Templates
 
-| Template | Purpose |
-|----------|---------|
+| Template                                                                     | Purpose                                       |
+| ---------------------------------------------------------------------------- | --------------------------------------------- |
 | [templates/dogfood-report-template.md](templates/dogfood-report-template.md) | Copy into output directory as the report file |

@@ -2,7 +2,7 @@
 
 Login flows, session persistence, OAuth, 2FA, and authenticated browsing.
 
-**Related**: [session-management.md](session-management.md) for state persistence details, [SKILL.md](../SKILL.md) for quick start.
+Related: [session-management.md](session-management.md) for state persistence details, [SKILL.md](../SKILL.md) for quick start.
 
 ## Contents
 
@@ -23,7 +23,7 @@ Login flows, session persistence, OAuth, 2FA, and authenticated browsing.
 
 The fastest way to authenticate is to reuse cookies from a Chrome session you are already logged into.
 
-**Step 1: Start Chrome with remote debugging**
+Step 1: Start Chrome with remote debugging
 
 ```bash
 # macOS
@@ -38,16 +38,16 @@ google-chrome --remote-debugging-port=9222
 
 Log in to your target site(s) in this Chrome window as you normally would.
 
-> **Security note:** `--remote-debugging-port` exposes full browser control on localhost. Any local process can connect and read cookies, execute JS, etc. Only use on trusted machines and close Chrome when done.
+> Security note: `--remote-debugging-port` exposes full browser control on localhost. Any local process can connect and read cookies, execute JS, etc. Only use on trusted machines and close Chrome when done.
 
-**Step 2: Grab the auth state**
+Step 2: Grab the auth state
 
 ```bash
 # Auto-discover the running Chrome and save its cookies + localStorage
 agent-browser --auto-connect state save ./my-auth.json
 ```
 
-**Step 3: Reuse in automation**
+Step 3: Reuse in automation
 
 ```bash
 # Load auth at launch
@@ -60,9 +60,9 @@ agent-browser open https://app.example.com/dashboard
 
 This works for any site, including those with complex OAuth flows, SSO, or 2FA -- as long as Chrome already has valid session cookies.
 
-> **Security note:** State files contain session tokens in plaintext. Add them to `.gitignore`, delete when no longer needed, and set `AGENT_BROWSER_ENCRYPTION_KEY` for encryption at rest. See [Security Best Practices](#security-best-practices).
+> Security note: State files contain session tokens in plaintext. Add them to `.gitignore`, delete when no longer needed, and set `AGENT_BROWSER_ENCRYPTION_KEY` for encryption at rest. See [Security Best Practices](#security-best-practices).
 
-**Tip:** Combine with `--session-name` so the imported auth auto-persists across restarts:
+Tip: Combine with `--session-name` so the imported auth auto-persists across restarts:
 
 ```bash
 agent-browser --session-name myapp state load ./my-auth.json
@@ -277,24 +277,28 @@ fi
 
 ## Security Best Practices
 
-1. **Never commit state files** - They contain session tokens
+1. Never commit state files - They contain session tokens
+
    ```bash
    echo "*.auth-state.json" >> .gitignore
    ```
 
-2. **Use environment variables for credentials**
+2. Use environment variables for credentials
+
    ```bash
    agent-browser fill @e1 "$APP_USERNAME"
    agent-browser fill @e2 "$APP_PASSWORD"
    ```
 
-3. **Clean up after automation**
+3. Clean up after automation
+
    ```bash
    agent-browser cookies clear
    rm -f ./auth-state.json
    ```
 
-4. **Use short-lived sessions for CI/CD**
+4. Use short-lived sessions for CI/CD
+
    ```bash
    # Don't persist state in CI
    agent-browser open https://app.example.com/login

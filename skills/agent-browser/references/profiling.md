@@ -2,7 +2,7 @@
 
 Capture Chrome DevTools performance profiles during browser automation for performance analysis.
 
-**Related**: [commands.md](commands.md) for full command reference, [SKILL.md](../SKILL.md) for quick start.
+Related: [commands.md](commands.md) for full command reference, [SKILL.md](../SKILL.md) for quick start.
 
 ## Contents
 
@@ -109,9 +109,9 @@ The `metadata.clock-domain` field is set based on the host platform (Linux or ma
 
 Load the output JSON file in any of these tools:
 
-- **Chrome DevTools**: Performance panel > Load profile (Ctrl+Shift+I > Performance)
-- **Perfetto UI**: https://ui.perfetto.dev/ -- drag and drop the JSON file
-- **Trace Viewer**: `chrome://tracing` in any Chromium browser
+- Chrome DevTools: Performance panel > Load profile (Ctrl+Shift+I > Performance)
+- Perfetto UI: https://ui.perfetto.dev/ -- drag and drop the JSON file
+- Trace Viewer: `chrome://tracing` in any Chromium browser
 
 ## Limitations
 

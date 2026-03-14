@@ -10,11 +10,11 @@ Automate any Electron desktop app using agent-browser. Electron apps are built o
 
 ## Core Workflow
 
-1. **Launch** the Electron app with remote debugging enabled
-2. **Connect** agent-browser to the CDP port
-3. **Snapshot** to discover interactive elements
-4. **Interact** using element refs
-5. **Re-snapshot** after navigation or state changes
+1. Launch the Electron app with remote debugging enabled
+2. Connect agent-browser to the CDP port
+3. Snapshot to discover interactive elements
+4. Interact using element refs
+5. Re-snapshot after navigation or state changes
 
 ```bash
 # Launch an Electron app with remote debugging
@@ -70,7 +70,7 @@ discord --remote-debugging-port=9224
 "C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe" --remote-debugging-port=9223
 ```
 
-**Important:** If the app is already running, quit it first, then relaunch with the flag. The `--remote-debugging-port` flag must be present at launch time.
+Important: If the app is already running, quit it first, then relaunch with the flag. The `--remote-debugging-port` flag must be present at launch time.
 
 ## Connecting
 
@@ -125,7 +125,7 @@ agent-browser click @e3
 agent-browser screenshot webview.png
 ```
 
-**Note:** Webview support works via raw CDP connection.
+Note: Webview support works via raw CDP connection.
 
 ## Common Patterns
 
@@ -228,10 +228,10 @@ AGENT_BROWSER_COLOR_SCHEME=dark agent-browser connect 9222
 
 Any app built on Electron works, including:
 
-- **Communication:** Slack, Discord, Microsoft Teams, Signal, Telegram Desktop
-- **Development:** VS Code, GitHub Desktop, Postman, Insomnia
-- **Design:** Figma, Notion, Obsidian
-- **Media:** Spotify, Tidal
-- **Productivity:** Todoist, Linear, 1Password
+- Communication: Slack, Discord, Microsoft Teams, Signal, Telegram Desktop
+- Development: VS Code, GitHub Desktop, Postman, Insomnia
+- Design: Figma, Notion, Obsidian
+- Media: Spotify, Tidal
+- Productivity: Todoist, Linear, 1Password
 
 If an app is built with Electron, it supports `--remote-debugging-port` and can be automated with agent-browser.

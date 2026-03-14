@@ -10,12 +10,12 @@ Reference for categorizing issues found during dogfooding. Read this at the star
 
 ## Severity Levels
 
-| Severity | Definition |
-|----------|------------|
-| **critical** | Blocks a core workflow, causes data loss, or crashes the app |
-| **high** | Major feature broken or unusable, no workaround |
-| **medium** | Feature works but with noticeable problems, workaround exists |
-| **low** | Minor cosmetic or polish issue |
+| Severity | Definition                                                    |
+| -------- | ------------------------------------------------------------- |
+| critical | Blocks a core workflow, causes data loss, or crashes the app  |
+| high     | Major feature broken or unusable, no workaround               |
+| medium   | Feature works but with noticeable problems, workaround exists |
+| low      | Minor cosmetic or polish issue                                |
 
 ## Categories
 
@@ -99,11 +99,11 @@ Reference for categorizing issues found during dogfooding. Read this at the star
 
 Use this as a guide for what to test on each page/feature:
 
-1. **Visual scan** -- Take an annotated screenshot. Look for layout, alignment, and rendering issues.
-2. **Interactive elements** -- Click every button, link, and control. Do they work? Is there feedback?
-3. **Forms** -- Fill and submit. Test empty submission, invalid input, and edge cases.
-4. **Navigation** -- Follow all navigation paths. Check breadcrumbs, back button, deep links.
-5. **States** -- Check empty states, loading states, error states, and full/overflow states.
-6. **Console** -- Check for JS errors, failed requests, and warnings.
-7. **Responsiveness** -- If relevant, test at different viewport sizes.
-8. **Auth boundaries** -- Test what happens when not logged in, with different roles if applicable.
+1. Visual scan -- Take an annotated screenshot. Look for layout, alignment, and rendering issues.
+2. Interactive elements -- Click every button, link, and control. Do they work? Is there feedback?
+3. Forms -- Fill and submit. Test empty submission, invalid input, and edge cases.
+4. Navigation -- Follow all navigation paths. Check breadcrumbs, back button, deep links.
+5. States -- Check empty states, loading states, error states, and full/overflow states.
+6. Console -- Check for JS errors, failed requests, and warnings.
+7. Responsiveness -- If relevant, test at different viewport sizes.
+8. Auth boundaries -- Test what happens when not logged in, with different roles if applicable.
