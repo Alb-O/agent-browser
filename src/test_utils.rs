@@ -25,7 +25,7 @@ impl<'a> EnvGuard<'a> {
 			self.vars.iter().any(|(n, _)| n == name),
 			"EnvGuard::set called with unregistered var: {name}"
 		);
-		std::env::set_var(name, value);
+		unsafe { std::env::set_var(name, value) };
 	}
 
 	pub fn remove(&self, name: &str) {
@@ -33,7 +33,7 @@ impl<'a> EnvGuard<'a> {
 			self.vars.iter().any(|(n, _)| n == name),
 			"EnvGuard::remove called with unregistered var: {name}"
 		);
-		std::env::remove_var(name);
+		unsafe { std::env::remove_var(name) };
 	}
 }
 
@@ -41,8 +41,8 @@ impl Drop for EnvGuard<'_> {
 	fn drop(&mut self) {
 		for (name, value) in &self.vars {
 			match value {
-				Some(v) => std::env::set_var(name, v),
-				None => std::env::remove_var(name),
+				Some(v) => unsafe { std::env::set_var(name, v) },
+				None => unsafe { std::env::remove_var(name) },
 			}
 		}
 	}

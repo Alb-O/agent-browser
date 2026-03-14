@@ -689,6 +689,7 @@ pub async fn execute_command(cmd: &Value, state: &mut DaemonState) -> Value {
 
 async fn auto_launch(state: &mut DaemonState) -> Result<(), String> {
 	let options = launch_options_from_env();
+	let storage_state = options.storage_state.clone();
 	let engine = env::var("AGENT_BROWSER_ENGINE").ok();
 
 	if let Ok(cdp) = env::var("AGENT_BROWSER_CDP") {
@@ -696,7 +697,10 @@ async fn auto_launch(state: &mut DaemonState) -> Result<(), String> {
 		state.browser = Some(mgr);
 		state.subscribe_to_browser_events();
 		state.update_stream_client().await;
-		try_auto_restore_state(state).await;
+		maybe_apply_storage_state(state.browser.as_ref(), storage_state.as_deref()).await?;
+		if storage_state.is_none() {
+			try_auto_restore_state(state).await;
+		}
 		return Ok(());
 	}
 
@@ -705,7 +709,10 @@ async fn auto_launch(state: &mut DaemonState) -> Result<(), String> {
 		state.browser = Some(mgr);
 		state.subscribe_to_browser_events();
 		state.update_stream_client().await;
-		try_auto_restore_state(state).await;
+		maybe_apply_storage_state(state.browser.as_ref(), storage_state.as_deref()).await?;
+		if storage_state.is_none() {
+			try_auto_restore_state(state).await;
+		}
 		return Ok(());
 	}
 
@@ -713,7 +720,10 @@ async fn auto_launch(state: &mut DaemonState) -> Result<(), String> {
 	state.browser = Some(mgr);
 	state.subscribe_to_browser_events();
 	state.update_stream_client().await;
-	try_auto_restore_state(state).await;
+	maybe_apply_storage_state(state.browser.as_ref(), storage_state.as_deref()).await?;
+	if storage_state.is_none() {
+		try_auto_restore_state(state).await;
+	}
 	Ok(())
 }
 
@@ -786,6 +796,15 @@ async fn try_auto_restore_state(state: &mut DaemonState) {
 	}
 }
 
+async fn maybe_apply_storage_state(browser: Option<&BrowserManager>, path: Option<&str>) -> Result<(), String> {
+	let Some(path) = path.filter(|p| !p.is_empty()) else {
+		return Ok(());
+	};
+	let mgr = browser.ok_or("Browser not launched")?;
+	let session_id = mgr.active_session_id()?.to_string();
+	state::load_state(&mgr.client, &session_id, path).await
+}
+
 // ---------------------------------------------------------------------------
 // Phase 1 handlers
 // ---------------------------------------------------------------------------
@@ -843,6 +862,7 @@ async fn handle_launch(cmd: &Value, state: &mut DaemonState) -> Result<Value, St
 		state.browser = Some(BrowserManager::connect_cdp(url).await?);
 		state.subscribe_to_browser_events();
 		state.update_stream_client().await;
+		maybe_apply_storage_state(state.browser.as_ref(), storage_state).await?;
 		return Ok(json!({ "launched": true }));
 	}
 
@@ -850,6 +870,7 @@ async fn handle_launch(cmd: &Value, state: &mut DaemonState) -> Result<Value, St
 		state.browser = Some(BrowserManager::connect_cdp(&port.to_string()).await?);
 		state.subscribe_to_browser_events();
 		state.update_stream_client().await;
+		maybe_apply_storage_state(state.browser.as_ref(), storage_state).await?;
 		return Ok(json!({ "launched": true }));
 	}
 
@@ -857,6 +878,7 @@ async fn handle_launch(cmd: &Value, state: &mut DaemonState) -> Result<Value, St
 		state.browser = Some(BrowserManager::connect_auto().await?);
 		state.subscribe_to_browser_events();
 		state.update_stream_client().await;
+		maybe_apply_storage_state(state.browser.as_ref(), storage_state).await?;
 		return Ok(json!({ "launched": true }));
 	}
 
@@ -875,6 +897,7 @@ async fn handle_launch(cmd: &Value, state: &mut DaemonState) -> Result<Value, St
 						state.browser = Some(mgr);
 						state.subscribe_to_browser_events();
 						state.update_stream_client().await;
+						maybe_apply_storage_state(state.browser.as_ref(), storage_state).await?;
 						return Ok(json!({ "launched": true, "provider": provider }));
 					}
 					Err(e) => {
@@ -941,6 +964,8 @@ async fn handle_launch(cmd: &Value, state: &mut DaemonState) -> Result<Value, St
 		let _ = network::install_domain_filter(&mgr.client, session_id, &filter.allowed_domains).await;
 		network::sanitize_existing_pages(&mgr.client, &mgr.pages_list(), filter).await;
 	}
+
+	maybe_apply_storage_state(state.browser.as_ref(), storage_state).await?;
 
 	Ok(json!({ "launched": true }))
 }

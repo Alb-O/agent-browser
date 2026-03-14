@@ -136,8 +136,10 @@ async fn e2e_lightpanda_auto_launch_can_open_page() {
 
 	let prev_engine = std::env::var("AGENT_BROWSER_ENGINE").ok();
 	let prev_path = std::env::var("AGENT_BROWSER_EXECUTABLE_PATH").ok();
-	std::env::set_var("AGENT_BROWSER_ENGINE", "lightpanda");
-	std::env::set_var("AGENT_BROWSER_EXECUTABLE_PATH", &lightpanda_bin);
+	unsafe {
+		std::env::set_var("AGENT_BROWSER_ENGINE", "lightpanda");
+		std::env::set_var("AGENT_BROWSER_EXECUTABLE_PATH", &lightpanda_bin);
+	}
 
 	let mut state = DaemonState::new();
 
@@ -152,12 +154,12 @@ async fn e2e_lightpanda_auto_launch_can_open_page() {
 	.expect("Lightpanda auto-launch should not hang");
 
 	match prev_engine {
-		Some(value) => std::env::set_var("AGENT_BROWSER_ENGINE", value),
-		None => std::env::remove_var("AGENT_BROWSER_ENGINE"),
+		Some(value) => unsafe { std::env::set_var("AGENT_BROWSER_ENGINE", value) },
+		None => unsafe { std::env::remove_var("AGENT_BROWSER_ENGINE") },
 	}
 	match prev_path {
-		Some(value) => std::env::set_var("AGENT_BROWSER_EXECUTABLE_PATH", value),
-		None => std::env::remove_var("AGENT_BROWSER_EXECUTABLE_PATH"),
+		Some(value) => unsafe { std::env::set_var("AGENT_BROWSER_EXECUTABLE_PATH", value) },
+		None => unsafe { std::env::remove_var("AGENT_BROWSER_EXECUTABLE_PATH") },
 	}
 
 	assert_success(&resp);
@@ -1098,6 +1100,83 @@ async fn e2e_state_management() {
 	assert!(get_data(&resp)["files"].is_array());
 
 	// Clean up
+	let _ = std::fs::remove_file(&tmp_state);
+
+	let resp = execute_command(&json!({ "id": "99", "action": "close" }), &mut state).await;
+	assert_success(&resp);
+}
+
+#[tokio::test]
+#[ignore]
+async fn e2e_playwright_storage_state_launch() {
+	if super::cdp::chrome::find_chrome().is_none() {
+		return;
+	}
+
+	let mut state = DaemonState::new();
+	let tmp_state = std::env::temp_dir().join(format!("agent-browser-playwright-state-{}.json", uuid::Uuid::new_v4()));
+	let state_json = json!({
+		"cookies": [
+			{
+				"name": "pw_cookie",
+				"value": "pw_value",
+				"domain": "example.com",
+				"path": "/",
+				"expires": 1893456000.0,
+				"httpOnly": false,
+				"secure": true,
+				"sameSite": "Lax"
+			}
+		],
+		"origins": [
+			{
+				"origin": "https://example.com",
+				"localStorage": [
+					{ "name": "pw_key", "value": "pw_val" }
+				]
+			}
+		]
+	});
+	std::fs::write(&tmp_state, state_json.to_string()).unwrap();
+
+	let resp = execute_command(
+		&json!({
+			"id": "1",
+			"action": "launch",
+			"headless": true,
+			"storageState": tmp_state.to_string_lossy().to_string(),
+		}),
+		&mut state,
+	)
+	.await;
+	assert_success(&resp);
+
+	let resp = execute_command(
+		&json!({ "id": "2", "action": "navigate", "url": "https://example.com" }),
+		&mut state,
+	)
+	.await;
+	assert_success(&resp);
+
+	let resp = execute_command(
+		&json!({ "id": "3", "action": "storage_get", "type": "local", "key": "pw_key" }),
+		&mut state,
+	)
+	.await;
+	assert_success(&resp);
+	assert_eq!(get_data(&resp)["value"], "pw_val");
+
+	let resp = execute_command(&json!({ "id": "4", "action": "cookies_get" }), &mut state).await;
+	assert_success(&resp);
+	let cookies = get_data(&resp)["cookies"].as_array().unwrap();
+	assert!(
+		cookies
+			.iter()
+			.any(|cookie| cookie["name"] == "pw_cookie" && cookie["value"] == "pw_value"),
+		"Expected imported cookie to be present, got: {}",
+		serde_json::to_string_pretty(&get_data(&resp)["cookies"]).unwrap_or_default()
+	);
+
 	let _ = std::fs::remove_file(&tmp_state);
 
 	let resp = execute_command(&json!({ "id": "99", "action": "close" }), &mut state).await;

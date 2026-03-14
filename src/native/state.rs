@@ -16,7 +16,9 @@ use {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StorageState {
+	#[serde(default)]
 	pub cookies: Vec<Cookie>,
+	#[serde(default)]
 	pub origins: Vec<OriginStorage>,
 }
 
@@ -24,6 +26,7 @@ pub struct StorageState {
 #[serde(rename_all = "camelCase")]
 pub struct OriginStorage {
 	pub origin: String,
+	#[serde(default)]
 	pub local_storage: Vec<StorageEntry>,
 	#[serde(default)]
 	pub session_storage: Vec<StorageEntry>,
@@ -34,6 +37,31 @@ pub struct OriginStorage {
 pub struct StorageEntry {
 	pub name: String,
 	pub value: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawStorageState {
+	#[serde(default)]
+	cookies: Vec<Value>,
+	#[serde(default)]
+	origins: Vec<RawOriginStorage>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawOriginStorage {
+	origin: String,
+	#[serde(default)]
+	local_storage: Vec<StorageEntry>,
+	#[serde(default)]
+	session_storage: Vec<StorageEntry>,
+}
+
+#[derive(Debug)]
+struct LoadedStorageState {
+	cookies: Vec<Value>,
+	origins: Vec<OriginStorage>,
 }
 
 pub async fn save_state(
@@ -127,42 +155,12 @@ pub async fn save_state(
 }
 
 pub async fn load_state(client: &CdpClient, session_id: &str, path: &str) -> Result<(), String> {
-	let json_str = if path.ends_with(".enc") {
-		let key = std::env::var("AGENT_BROWSER_ENCRYPTION_KEY")
-			.map_err(|_| "Encrypted state file requires AGENT_BROWSER_ENCRYPTION_KEY".to_string())?;
-		let data = fs::read(path).map_err(|e| format!("Failed to read state from {}: {}", path, e))?;
-		let decrypted = decrypt_data(&data, &key)?;
-		String::from_utf8(decrypted).map_err(|e| format!("Decrypted state is not valid UTF-8: {}", e))?
-	} else {
-		match fs::read_to_string(path) {
-			Ok(s) => s,
-			Err(e) => {
-				if let Ok(key) = std::env::var("AGENT_BROWSER_ENCRYPTION_KEY") {
-					let enc_path = format!("{}.enc", path);
-					if let Ok(data) = fs::read(&enc_path) {
-						let decrypted = decrypt_data(&data, &key)?;
-						String::from_utf8(decrypted)
-							.map_err(|de| format!("Decrypted state is not valid UTF-8: {}", de))?
-					} else {
-						return Err(format!("Failed to read state from {}: {}", path, e));
-					}
-				} else {
-					return Err(format!("Failed to read state from {}: {}", path, e));
-				}
-			}
-		}
-	};
+	let json_str = read_state_json(path)?;
+	let state = parse_state_json(&json_str)?;
 
-	let state: StorageState = serde_json::from_str(&json_str).map_err(|e| format!("Invalid state file: {}", e))?;
-
-	// Load cookies
+	cookies::clear_cookies(client, session_id).await?;
 	if !state.cookies.is_empty() {
-		let cookie_values: Vec<Value> = state
-			.cookies
-			.iter()
-			.map(|c| serde_json::to_value(c).unwrap_or(Value::Null))
-			.collect();
-		cookies::set_cookies(client, session_id, cookie_values, None).await?;
+		cookies::set_cookies(client, session_id, state.cookies, None).await?;
 	}
 
 	// Load storage per origin
@@ -179,6 +177,18 @@ pub async fn load_state(client: &CdpClient, session_id: &str, path: &str) -> Res
 
 		// Brief wait for navigation
 		tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+		let _ = client
+			.send_command_typed::<_, super::cdp::types::EvaluateResult>(
+				"Runtime.evaluate",
+				&EvaluateParams {
+					expression: "localStorage.clear(); sessionStorage.clear();".to_string(),
+					return_by_value: Some(true),
+					await_promise: Some(false),
+				},
+				Some(session_id),
+			)
+			.await;
 
 		for entry in &origin.local_storage {
 			let js = format!(
@@ -220,6 +230,51 @@ pub async fn load_state(client: &CdpClient, session_id: &str, path: &str) -> Res
 	}
 
 	Ok(())
+}
+
+fn read_state_json(path: &str) -> Result<String, String> {
+	if path.ends_with(".enc") {
+		let key = std::env::var("AGENT_BROWSER_ENCRYPTION_KEY")
+			.map_err(|_| "Encrypted state file requires AGENT_BROWSER_ENCRYPTION_KEY".to_string())?;
+		let data = fs::read(path).map_err(|e| format!("Failed to read state from {}: {}", path, e))?;
+		let decrypted = decrypt_data(&data, &key)?;
+		return String::from_utf8(decrypted).map_err(|e| format!("Decrypted state is not valid UTF-8: {}", e));
+	}
+
+	match fs::read_to_string(path) {
+		Ok(s) => Ok(s),
+		Err(e) => {
+			if let Ok(key) = std::env::var("AGENT_BROWSER_ENCRYPTION_KEY") {
+				let enc_path = format!("{}.enc", path);
+				if let Ok(data) = fs::read(&enc_path) {
+					let decrypted = decrypt_data(&data, &key)?;
+					String::from_utf8(decrypted).map_err(|de| format!("Decrypted state is not valid UTF-8: {}", de))
+				} else {
+					Err(format!("Failed to read state from {}: {}", path, e))
+				}
+			} else {
+				Err(format!("Failed to read state from {}: {}", path, e))
+			}
+		}
+	}
+}
+
+fn parse_state_json(json_str: &str) -> Result<LoadedStorageState, String> {
+	let raw: RawStorageState = serde_json::from_str(json_str).map_err(|e| format!("Invalid state file: {}", e))?;
+	let origins = raw
+		.origins
+		.into_iter()
+		.map(|origin| OriginStorage {
+			origin: origin.origin,
+			local_storage: origin.local_storage,
+			session_storage: origin.session_storage,
+		})
+		.collect();
+
+	Ok(LoadedStorageState {
+		cookies: raw.cookies,
+		origins,
+	})
 }
 
 fn is_state_file(path: &std::path::Path) -> bool {
@@ -270,17 +325,9 @@ pub fn state_list() -> Result<Value, String> {
 
 pub fn state_show(path: &str) -> Result<Value, String> {
 	let encrypted = path.ends_with(".enc");
-	let json_str = if encrypted {
-		let key = std::env::var("AGENT_BROWSER_ENCRYPTION_KEY")
-			.map_err(|_| "Encrypted state file requires AGENT_BROWSER_ENCRYPTION_KEY".to_string())?;
-		let data = fs::read(path).map_err(|e| format!("Failed to read state file: {}", e))?;
-		let decrypted = decrypt_data(&data, &key)?;
-		String::from_utf8(decrypted).map_err(|e| format!("Decrypted state is not valid UTF-8: {}", e))?
-	} else {
-		fs::read_to_string(path).map_err(|e| format!("Failed to read state file: {}", e))?
-	};
-
-	let state: StorageState = serde_json::from_str(&json_str).map_err(|e| format!("Invalid state file: {}", e))?;
+	let json_str = read_state_json(path).map_err(|e| e.replace("state from", "state file"))?;
+	let state = parse_state_json(&json_str)?;
+	let raw_state: Value = serde_json::from_str(&json_str).map_err(|e| format!("Invalid state file: {}", e))?;
 
 	let metadata = fs::metadata(path).ok();
 	let filename = std::path::Path::new(path)
@@ -300,7 +347,7 @@ pub fn state_show(path: &str) -> Result<Value, String> {
 			.unwrap_or(0),
 		"encrypted": encrypted,
 		"summary": format!("{} cookies, {} origins", state.cookies.len(), state.origins.len()),
-		"state": state,
+		"state": raw_state,
 	}))
 }
 
@@ -499,6 +546,74 @@ mod tests {
 		let parsed: StorageState = serde_json::from_str(&json).unwrap();
 		assert!(parsed.cookies.is_empty());
 		assert!(parsed.origins.is_empty());
+	}
+
+	#[test]
+	fn test_parse_playwright_storage_state() {
+		let json = json!({
+			"cookies": [
+				{
+					"name": "pw-session",
+					"value": "abc123",
+					"domain": ".example.com",
+					"path": "/",
+					"expires": 1700000000,
+					"httpOnly": true,
+					"secure": true,
+					"sameSite": "Lax",
+					"partitionKey": "https://example.com",
+				}
+			],
+			"origins": [
+				{
+					"origin": "https://example.com",
+					"localStorage": [
+						{ "name": "token", "value": "secret" }
+					]
+				}
+			]
+		});
+
+		let parsed = parse_state_json(&json.to_string()).unwrap();
+		assert_eq!(parsed.cookies.len(), 1);
+		assert_eq!(parsed.cookies[0]["partitionKey"], "https://example.com");
+		assert_eq!(parsed.origins.len(), 1);
+		assert_eq!(parsed.origins[0].local_storage.len(), 1);
+		assert!(parsed.origins[0].session_storage.is_empty());
+	}
+
+	#[test]
+	fn test_state_show_playwright_file() {
+		let path = std::env::temp_dir().join(format!("agent-browser-playwright-state-{}.json", uuid::Uuid::new_v4()));
+		let json = json!({
+			"cookies": [
+				{
+					"name": "pw-session",
+					"value": "abc123",
+					"domain": ".example.com",
+					"path": "/",
+					"expires": 1700000000,
+					"httpOnly": true,
+					"secure": true,
+					"sameSite": "Lax"
+				}
+			],
+			"origins": [
+				{
+					"origin": "https://example.com",
+					"localStorage": [
+						{ "name": "token", "value": "secret" }
+					]
+				}
+			]
+		});
+		fs::write(&path, json.to_string()).unwrap();
+
+		let shown = state_show(path.to_str().unwrap()).unwrap();
+		assert_eq!(shown["summary"], "1 cookies, 1 origins");
+		assert_eq!(shown["state"]["origins"][0]["localStorage"][0]["name"], "token");
+
+		let _ = fs::remove_file(path);
 	}
 
 	#[test]
