@@ -90,16 +90,18 @@ impl RefMap {
 pub fn parse_ref(input: &str) -> Option<String> {
 	let trimmed = input.trim();
 
-	if let Some(stripped) = trimmed.strip_prefix('@') {
-		if stripped.starts_with('e') && stripped[1..].chars().all(|c| c.is_ascii_digit()) {
-			return Some(stripped.to_string());
-		}
+	if let Some(stripped) = trimmed.strip_prefix('@')
+		&& stripped.starts_with('e')
+		&& stripped[1..].chars().all(|c| c.is_ascii_digit())
+	{
+		return Some(stripped.to_string());
 	}
 
-	if let Some(stripped) = trimmed.strip_prefix("ref=") {
-		if stripped.starts_with('e') && stripped[1..].chars().all(|c| c.is_ascii_digit()) {
-			return Some(stripped.to_string());
-		}
+	if let Some(stripped) = trimmed.strip_prefix("ref=")
+		&& stripped.starts_with('e')
+		&& stripped[1..].chars().all(|c| c.is_ascii_digit())
+	{
+		return Some(stripped.to_string());
 	}
 
 	if trimmed.starts_with('e') && trimmed.len() > 1 && trimmed[1..].chars().all(|c| c.is_ascii_digit()) {

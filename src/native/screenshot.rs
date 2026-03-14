@@ -183,16 +183,16 @@ async fn capture_screenshot_base64(
 				scale: 1.0,
 			});
 		}
-	} else if let Some(ref selector) = options.selector {
-		if let Some(rect) = get_rect_for_selector(client, session_id, ref_map, selector).await? {
-			params.clip = Some(Viewport {
-				x: rect.x,
-				y: rect.y,
-				width: rect.width,
-				height: rect.height,
-				scale: 1.0,
-			});
-		}
+	} else if let Some(ref selector) = options.selector
+		&& let Some(rect) = get_rect_for_selector(client, session_id, ref_map, selector).await?
+	{
+		params.clip = Some(Viewport {
+			x: rect.x,
+			y: rect.y,
+			width: rect.width,
+			height: rect.height,
+			scale: 1.0,
+		});
 	}
 
 	let result: CaptureScreenshotResult = client

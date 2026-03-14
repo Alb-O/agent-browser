@@ -151,12 +151,12 @@ fn build_chrome_args(options: &LaunchOptions) -> Result<ChromeArgs, String> {
 		args.push("--allow-file-access".to_string());
 	}
 
-	if let Some(ref exts) = options.extensions {
-		if !exts.is_empty() {
-			let ext_list = exts.join(",");
-			args.push(format!("--load-extension={}", ext_list));
-			args.push(format!("--disable-extensions-except={}", ext_list));
-		}
+	if let Some(ref exts) = options.extensions
+		&& !exts.is_empty()
+	{
+		let ext_list = exts.join(",");
+		args.push(format!("--load-extension={}", ext_list));
+		args.push(format!("--disable-extensions-except={}", ext_list));
 	}
 
 	let has_window_size = options
@@ -334,12 +334,12 @@ pub fn find_chrome() -> Option<PathBuf> {
 	{
 		let candidates = ["google-chrome", "google-chrome-stable", "chromium-browser", "chromium"];
 		for name in &candidates {
-			if let Ok(output) = Command::new("which").arg(name).output() {
-				if output.status.success() {
-					let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-					if !path.is_empty() {
-						return Some(PathBuf::from(path));
-					}
+			if let Ok(output) = Command::new("which").arg(name).output()
+				&& output.status.success()
+			{
+				let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+				if !path.is_empty() {
+					return Some(PathBuf::from(path));
 				}
 			}
 		}
@@ -478,10 +478,10 @@ fn should_disable_sandbox(existing_args: &[String]) -> bool {
 		}
 
 		// Generic container detection: cgroup contains docker/kubepods/lxc
-		if let Ok(cgroup) = std::fs::read_to_string("/proc/1/cgroup") {
-			if cgroup.contains("docker") || cgroup.contains("kubepods") || cgroup.contains("lxc") {
-				return true;
-			}
+		if let Ok(cgroup) = std::fs::read_to_string("/proc/1/cgroup")
+			&& (cgroup.contains("docker") || cgroup.contains("kubepods") || cgroup.contains("lxc"))
+		{
+			return true;
 		}
 	}
 
@@ -547,13 +547,13 @@ fn build_playwright_binary_path(chromium_dir: &Path) -> PathBuf {
 }
 
 fn expand_tilde(path: &str) -> String {
-	if let Some(rest) = path.strip_prefix('~') {
-		if let Some(home) = dirs::home_dir() {
-			return home
-				.join(rest.strip_prefix('/').unwrap_or(rest))
-				.to_string_lossy()
-				.to_string();
-		}
+	if let Some(rest) = path.strip_prefix('~')
+		&& let Some(home) = dirs::home_dir()
+	{
+		return home
+			.join(rest.strip_prefix('/').unwrap_or(rest))
+			.to_string_lossy()
+			.to_string();
 	}
 	path.to_string()
 }

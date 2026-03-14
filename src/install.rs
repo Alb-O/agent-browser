@@ -33,10 +33,10 @@ pub fn find_installed_chrome() -> Option<PathBuf> {
 	versions.sort_by_key(|b| std::cmp::Reverse(b.file_name()));
 
 	for entry in versions {
-		if let Some(bin) = chrome_binary_in_dir(&entry.path()) {
-			if bin.exists() {
-				return Some(bin);
-			}
+		if let Some(bin) = chrome_binary_in_dir(&entry.path())
+			&& bin.exists()
+		{
+			return Some(bin);
 		}
 	}
 
@@ -306,11 +306,11 @@ pub fn run_install(with_deps: bool) {
 
 	let dest = get_browsers_dir().join(format!("chrome-{}", version));
 
-	if let Some(bin) = chrome_binary_in_dir(&dest) {
-		if bin.exists() {
-			println!("{} Chrome {} is already installed", color::success_indicator(), version);
-			return;
-		}
+	if let Some(bin) = chrome_binary_in_dir(&dest)
+		&& bin.exists()
+	{
+		println!("{} Chrome {} is already installed", color::success_indicator(), version);
+		return;
 	}
 
 	println!("  Downloading Chrome {} for {}", version, platform_key());

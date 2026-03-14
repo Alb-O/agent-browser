@@ -107,12 +107,12 @@ fn push_bounded(buffer: &Mutex<VecDeque<String>>, line: String) {
 pub fn find_lightpanda() -> Option<PathBuf> {
 	#[cfg(unix)]
 	{
-		if let Ok(output) = Command::new("which").arg("lightpanda").output() {
-			if output.status.success() {
-				let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-				if !path.is_empty() {
-					return Some(PathBuf::from(path));
-				}
+		if let Ok(output) = Command::new("which").arg("lightpanda").output()
+			&& output.status.success()
+		{
+			let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+			if !path.is_empty() {
+				return Some(PathBuf::from(path));
 			}
 		}
 	}

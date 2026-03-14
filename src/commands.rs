@@ -116,10 +116,10 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
 				nav_cmd["headers"] = headers;
 			}
 			// Include iOS device info if specified (needed for auto-launch with existing daemon)
-			if flags.provider.as_deref() == Some("ios") {
-				if let Some(ref device) = flags.device {
-					nav_cmd["iosDevice"] = json!(device);
-				}
+			if flags.provider.as_deref() == Some("ios")
+				&& let Some(ref device) = flags.device
+			{
+				nav_cmd["iosDevice"] = json!(device);
 			}
 			Ok(nav_cmd)
 		}
@@ -382,10 +382,10 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
 					usage: "wait --text <text>",
 				})?;
 				let mut cmd = json!({ "id": id, "action": "wait", "text": text });
-				if let Some(t_idx) = rest.iter().position(|&s| s == "--timeout") {
-					if let Some(Ok(ms)) = rest.get(t_idx + 1).map(|s| s.parse::<u64>()) {
-						cmd["timeout"] = json!(ms);
-					}
+				if let Some(t_idx) = rest.iter().position(|&s| s == "--timeout")
+					&& let Some(Ok(ms)) = rest.get(t_idx + 1).map(|s| s.parse::<u64>())
+				{
+					cmd["timeout"] = json!(ms);
 				}
 				return Ok(cmd);
 			}
@@ -395,18 +395,17 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
 				let mut cmd = json!({ "id": id, "action": "waitfordownload" });
 				// Check for optional path (first non-flag argument after --download)
 				let download_idx = rest.iter().position(|&s| s == "--download" || s == "-d").unwrap();
-				if let Some(path) = rest.get(download_idx + 1) {
-					if !path.starts_with("--") {
-						cmd["path"] = json!(path);
-					}
+				if let Some(path) = rest.get(download_idx + 1)
+					&& !path.starts_with("--")
+				{
+					cmd["path"] = json!(path);
 				}
 				// Check for optional timeout
-				if let Some(idx) = rest.iter().position(|&s| s == "--timeout") {
-					if let Some(timeout_str) = rest.get(idx + 1) {
-						if let Ok(timeout) = timeout_str.parse::<u64>() {
-							cmd["timeout"] = json!(timeout);
-						}
-					}
+				if let Some(idx) = rest.iter().position(|&s| s == "--timeout")
+					&& let Some(timeout_str) = rest.get(idx + 1)
+					&& let Ok(timeout) = timeout_str.parse::<u64>()
+				{
+					cmd["timeout"] = json!(timeout);
 				}
 				return Ok(cmd);
 			}
@@ -501,11 +500,11 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
 						obj.insert("cursor".to_string(), json!(true));
 					}
 					"-d" | "--depth" => {
-						if let Some(d) = rest.get(i + 1) {
-							if let Ok(n) = d.parse::<i32>() {
-								obj.insert("maxDepth".to_string(), json!(n));
-								i += 1;
-							}
+						if let Some(d) = rest.get(i + 1)
+							&& let Ok(n) = d.parse::<i32>()
+						{
+							obj.insert("maxDepth".to_string(), json!(n));
+							i += 1;
 						}
 					}
 					"-s" | "--selector" => {
@@ -1147,10 +1146,10 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
 						i += 1;
 					}
 
-					if let Some(name) = session_name {
-						if !is_valid_session_name(name) {
-							return Err(ParseError::InvalidSessionName { name: name.to_string() });
-						}
+					if let Some(name) = session_name
+						&& !is_valid_session_name(name)
+					{
+						return Err(ParseError::InvalidSessionName { name: name.to_string() });
 					}
 
 					let mut cmd = json!({ "id": id, "action": "state_clear" });
@@ -1174,11 +1173,11 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
 
 					let mut i = 1;
 					while i < rest.len() {
-						if rest[i] == "--older-than" {
-							if let Some(d) = rest.get(i + 1) {
-								days = d.parse().ok();
-								i += 1;
-							}
+						if rest[i] == "--older-than"
+							&& let Some(d) = rest.get(i + 1)
+						{
+							days = d.parse().ok();
+							i += 1;
 						}
 						i += 1;
 					}
@@ -1248,10 +1247,10 @@ pub fn parse_command(args: &[String], flags: &Flags) -> Result<Value, ParseError
 				});
 			}
 			let mut cmd = json!({ "id": id, "action": "swipe", "direction": direction });
-			if let Some(distance) = rest.get(1) {
-				if let Ok(d) = distance.parse::<u32>() {
-					cmd.as_object_mut().unwrap().insert("distance".to_string(), json!(d));
-				}
+			if let Some(distance) = rest.get(1)
+				&& let Ok(d) = distance.parse::<u32>()
+			{
+				cmd.as_object_mut().unwrap().insert("distance".to_string(), json!(d));
 			}
 			Ok(cmd)
 		}

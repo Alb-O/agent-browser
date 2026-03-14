@@ -278,14 +278,13 @@ async fn find_cursor_interactive_elements(
 	let mut indexed: Vec<(usize, String)> = Vec::new();
 	for prop in result_array {
 		let name = prop.get("name").and_then(|v| v.as_str()).unwrap_or("");
-		if let Ok(idx) = name.parse::<usize>() {
-			if let Some(obj_id) = prop
+		if let Ok(idx) = name.parse::<usize>()
+			&& let Some(obj_id) = prop
 				.get("value")
 				.and_then(|v| v.get("objectId"))
 				.and_then(|v| v.as_str())
-			{
-				indexed.push((idx, obj_id.to_string()));
-			}
+		{
+			indexed.push((idx, obj_id.to_string()));
 		}
 	}
 	indexed.sort_by_key(|(idx, _)| *idx);
@@ -453,10 +452,10 @@ fn render_tree(nodes: &[TreeNode], idx: usize, indent: usize, output: &mut Strin
 		return;
 	}
 
-	if let Some(max_depth) = options.depth {
-		if indent > max_depth {
-			return;
-		}
+	if let Some(max_depth) = options.depth
+		&& indent > max_depth
+	{
+		return;
 	}
 
 	let role = &node.role;
@@ -496,20 +495,20 @@ fn render_tree(nodes: &[TreeNode], idx: usize, indent: usize, output: &mut Strin
 	if let Some(expanded) = node.expanded {
 		attrs.push(format!("expanded={}", expanded));
 	}
-	if let Some(selected) = node.selected {
-		if selected {
-			attrs.push("selected".to_string());
-		}
+	if let Some(selected) = node.selected
+		&& selected
+	{
+		attrs.push("selected".to_string());
 	}
-	if let Some(disabled) = node.disabled {
-		if disabled {
-			attrs.push("disabled".to_string());
-		}
+	if let Some(disabled) = node.disabled
+		&& disabled
+	{
+		attrs.push("disabled".to_string());
 	}
-	if let Some(required) = node.required {
-		if required {
-			attrs.push("required".to_string());
-		}
+	if let Some(required) = node.required
+		&& required
+	{
+		attrs.push("required".to_string());
 	}
 
 	if let Some(ref ref_id) = node.ref_id {
@@ -521,10 +520,11 @@ fn render_tree(nodes: &[TreeNode], idx: usize, indent: usize, output: &mut Strin
 	}
 
 	// Value
-	if let Some(ref val) = node.value_text {
-		if !val.is_empty() && val != &node.name {
-			line.push_str(&format!(": {}", val));
-		}
+	if let Some(ref val) = node.value_text
+		&& !val.is_empty()
+		&& val != &node.name
+	{
+		line.push_str(&format!(": {}", val));
 	}
 
 	output.push_str(&line);

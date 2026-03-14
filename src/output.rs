@@ -125,11 +125,11 @@ pub fn print_response_with_opts(resp: &Response, action: Option<&str>, opts: &Ou
 	}
 
 	if let Some(data) = &resp.data {
-		if action == Some("storage_get") {
-			if let Some(output) = format_storage_text(data) {
-				println!("{}", output);
-				return;
-			}
+		if action == Some("storage_get")
+			&& let Some(output) = format_storage_text(data)
+		{
+			println!("{}", output);
+			return;
 		}
 		// Inspect response (check before generic URL handler since it also has a "url" field)
 		if action == Some("inspect") {
@@ -346,15 +346,15 @@ pub fn print_response_with_opts(resp: &Response, action: Option<&str>, opts: &Ou
 			return;
 		}
 		// Cleared (cookies or request log)
-		if let Some(cleared) = data.get("cleared").and_then(|v| v.as_bool()) {
-			if cleared {
-				let label = match action {
-					Some("cookies_clear") => "Cookies cleared",
-					_ => "Request log cleared",
-				};
-				println!("{} {}", color::success_indicator(), label);
-				return;
-			}
+		if let Some(cleared) = data.get("cleared").and_then(|v| v.as_bool())
+			&& cleared
+		{
+			let label = match action {
+				Some("cookies_clear") => "Cookies cleared",
+				_ => "Request log cleared",
+			};
+			println!("{} {}", color::success_indicator(), label);
+			return;
 		}
 		// Bounding box
 		if let Some(box_data) = data.get("box") {
@@ -405,22 +405,22 @@ pub fn print_response_with_opts(resp: &Response, action: Option<&str>, opts: &Ou
 			return;
 		}
 		// Recording start (has "started" field)
-		if let Some(started) = data.get("started").and_then(|v| v.as_bool()) {
-			if started {
-				match action {
-					Some("profiler_start") => {
-						println!("{} Profiling started", color::success_indicator());
-					}
-					_ => {
-						if let Some(path) = data.get("path").and_then(|v| v.as_str()) {
-							println!("{} Recording started: {}", color::success_indicator(), path);
-						} else {
-							println!("{} Recording started", color::success_indicator());
-						}
+		if let Some(started) = data.get("started").and_then(|v| v.as_bool())
+			&& started
+		{
+			match action {
+				Some("profiler_start") => {
+					println!("{} Profiling started", color::success_indicator());
+				}
+				_ => {
+					if let Some(path) = data.get("path").and_then(|v| v.as_str()) {
+						println!("{} Recording started: {}", color::success_indicator(), path);
+					} else {
+						println!("{} Recording started", color::success_indicator());
 					}
 				}
-				return;
 			}
+			return;
 		}
 		// Recording restart (has "stopped" field - from recording_restart action)
 		if data.get("stopped").is_some() {
@@ -451,25 +451,25 @@ pub fn print_response_with_opts(resp: &Response, action: Option<&str>, opts: &Ou
 			return;
 		}
 		// Download response (has "suggestedFilename" or "filename" field)
-		if data.get("suggestedFilename").is_some() || data.get("filename").is_some() {
-			if let Some(path) = data.get("path").and_then(|v| v.as_str()) {
-				let filename = data
-					.get("suggestedFilename")
-					.or_else(|| data.get("filename"))
-					.and_then(|v| v.as_str())
-					.unwrap_or("");
-				if filename.is_empty() {
-					println!("{} Downloaded to {}", color::success_indicator(), color::green(path));
-				} else {
-					println!(
-						"{} Downloaded to {} ({})",
-						color::success_indicator(),
-						color::green(path),
-						filename
-					);
-				}
-				return;
+		if (data.get("suggestedFilename").is_some() || data.get("filename").is_some())
+			&& let Some(path) = data.get("path").and_then(|v| v.as_str())
+		{
+			let filename = data
+				.get("suggestedFilename")
+				.or_else(|| data.get("filename"))
+				.and_then(|v| v.as_str())
+				.unwrap_or("");
+			if filename.is_empty() {
+				println!("{} Downloaded to {}", color::success_indicator(), color::green(path));
+			} else {
+				println!(
+					"{} Downloaded to {} ({})",
+					color::success_indicator(),
+					color::green(path),
+					filename
+				);
 			}
+			return;
 		}
 		// Trace stop without path
 		if data.get("traceStopped").is_some() {
@@ -665,11 +665,11 @@ pub fn print_response_with_opts(resp: &Response, action: Option<&str>, opts: &Ou
 			}
 			return;
 		}
-		if data.get("deleted").and_then(|v| v.as_bool()).unwrap_or(false) {
-			if let Some(name) = data.get("name").and_then(|v| v.as_str()) {
-				println!("{} Auth profile '{}' deleted", color::success_indicator(), name);
-				return;
-			}
+		if data.get("deleted").and_then(|v| v.as_bool()).unwrap_or(false)
+			&& let Some(name) = data.get("name").and_then(|v| v.as_str())
+		{
+			println!("{} Auth profile '{}' deleted", color::success_indicator(), name);
+			return;
 		}
 
 		// Confirmation required (for orchestrator use)

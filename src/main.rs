@@ -94,26 +94,26 @@ fn run_session(args: &[String], session: &str, json_mode: bool) {
 						if !session_name.is_empty() {
 							// Check if session is actually running
 							let pid_path = socket_dir.join(&name);
-							if let Ok(pid_str) = fs::read_to_string(&pid_path) {
-								if let Ok(pid) = pid_str.trim().parse::<u32>() {
-									#[cfg(unix)]
-									let running = unsafe {
-										libc::kill(pid as i32, 0) == 0
-											|| std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
-									};
-									#[cfg(windows)]
-									let running = unsafe {
-										let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
-										if handle != 0 {
-											CloseHandle(handle);
-											true
-										} else {
-											false
-										}
-									};
-									if running {
-										sessions.push(session_name.to_string());
+							if let Ok(pid_str) = fs::read_to_string(&pid_path)
+								&& let Ok(pid) = pid_str.trim().parse::<u32>()
+							{
+								#[cfg(unix)]
+								let running = unsafe {
+									libc::kill(pid as i32, 0) == 0
+										|| std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
+								};
+								#[cfg(windows)]
+								let running = unsafe {
+									let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+									if handle != 0 {
+										CloseHandle(handle);
+										true
+									} else {
+										false
 									}
+								};
+								if running {
+									sessions.push(session_name.to_string());
 								}
 							}
 						}
@@ -192,10 +192,10 @@ fn main() {
 	let has_version = args.iter().any(|a| a == "--version" || a == "-V");
 
 	if has_help {
-		if let Some(cmd) = clean.first() {
-			if print_command_help(cmd) {
-				return;
-			}
+		if let Some(cmd) = clean.first()
+			&& print_command_help(cmd)
+		{
+			return;
 		}
 		print_help();
 		return;
@@ -268,16 +268,16 @@ fn main() {
 	}
 
 	// Validate session name before starting daemon
-	if let Some(ref name) = flags.session_name {
-		if !validation::is_valid_session_name(name) {
-			let msg = validation::session_name_error(name);
-			if flags.json {
-				print_json_error_with_type(msg, "invalid_session_name");
-			} else {
-				eprintln!("{} {}", color::error_indicator(), msg);
-			}
-			exit(1);
+	if let Some(ref name) = flags.session_name
+		&& !validation::is_valid_session_name(name)
+	{
+		let msg = validation::session_name_error(name);
+		if flags.json {
+			print_json_error_with_type(msg, "invalid_session_name");
+		} else {
+			eprintln!("{} {}", color::error_indicator(), msg);
 		}
+		exit(1);
 	}
 
 	let daemon_opts = DaemonOptions {
@@ -600,10 +600,10 @@ fn main() {
 		if let Some(ref proxy_str) = flags.proxy {
 			let mut proxy_obj = parse_proxy(proxy_str);
 			// Add bypass if specified
-			if let Some(ref bypass) = flags.proxy_bypass {
-				if let Some(obj) = proxy_obj.as_object_mut() {
-					obj.insert("bypass".to_string(), json!(bypass));
-				}
+			if let Some(ref bypass) = flags.proxy_bypass
+				&& let Some(obj) = proxy_obj.as_object_mut()
+			{
+				obj.insert("bypass".to_string(), json!(bypass));
 			}
 			cmd_obj.insert("proxy".to_string(), proxy_obj);
 		}
@@ -685,54 +685,52 @@ fn main() {
 		Ok(resp) => {
 			let success = resp.success;
 			// Handle interactive confirmation
-			if flags.confirm_interactive {
-				if let Some(data) = &resp.data {
-					if data
-						.get("confirmation_required")
-						.and_then(|v| v.as_bool())
-						.unwrap_or(false)
-					{
-						let desc = data
-							.get("description")
-							.and_then(|v| v.as_str())
-							.unwrap_or("unknown action");
-						let category = data.get("category").and_then(|v| v.as_str()).unwrap_or("");
-						let cid = data.get("confirmation_id").and_then(|v| v.as_str()).unwrap_or("");
+			if flags.confirm_interactive
+				&& let Some(data) = &resp.data
+				&& data
+					.get("confirmation_required")
+					.and_then(|v| v.as_bool())
+					.unwrap_or(false)
+			{
+				let desc = data
+					.get("description")
+					.and_then(|v| v.as_str())
+					.unwrap_or("unknown action");
+				let category = data.get("category").and_then(|v| v.as_str()).unwrap_or("");
+				let cid = data.get("confirmation_id").and_then(|v| v.as_str()).unwrap_or("");
 
-						eprintln!("[agent-browser] Action requires confirmation:");
-						eprintln!("  {}: {}", category, desc);
-						eprint!("  Allow? [y/N]: ");
+				eprintln!("[agent-browser] Action requires confirmation:");
+				eprintln!("  {}: {}", category, desc);
+				eprint!("  Allow? [y/N]: ");
 
-						let mut input = String::new();
-						let approved = if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
-							std::io::stdin().read_line(&mut input).is_ok()
-								&& matches!(input.trim().to_lowercase().as_str(), "y" | "yes")
-						} else {
-							false
-						};
+				let mut input = String::new();
+				let approved = if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+					std::io::stdin().read_line(&mut input).is_ok()
+						&& matches!(input.trim().to_lowercase().as_str(), "y" | "yes")
+				} else {
+					false
+				};
 
-						let confirm_cmd = if approved {
-							json!({ "id": gen_id(), "action": "confirm", "confirmationId": cid })
-						} else {
-							json!({ "id": gen_id(), "action": "deny", "confirmationId": cid })
-						};
+				let confirm_cmd = if approved {
+					json!({ "id": gen_id(), "action": "confirm", "confirmationId": cid })
+				} else {
+					json!({ "id": gen_id(), "action": "deny", "confirmationId": cid })
+				};
 
-						match send_command(confirm_cmd, &flags.session) {
-							Ok(r) => {
-								if !approved {
-									eprintln!("{} Action denied", color::error_indicator());
-									exit(1);
-								}
-								print_response_with_opts(&r, None, &output_opts);
-							}
-							Err(e) => {
-								eprintln!("{} {}", color::error_indicator(), e);
-								exit(1);
-							}
+				match send_command(confirm_cmd, &flags.session) {
+					Ok(r) => {
+						if !approved {
+							eprintln!("{} Action denied", color::error_indicator());
+							exit(1);
 						}
-						return;
+						print_response_with_opts(&r, None, &output_opts);
+					}
+					Err(e) => {
+						eprintln!("{} {}", color::error_indicator(), e);
+						exit(1);
 					}
 				}
+				return;
 			}
 			// Extract action for context-specific output handling
 			let action = cmd.get("action").and_then(|v| v.as_str());

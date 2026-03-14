@@ -174,17 +174,17 @@ async fn handle_ws_proxy(
 	// Wait for the attachToTarget response to extract the session ID
 	let session_id = tokio::time::timeout(std::time::Duration::from_secs(5), async {
 		while let Ok(raw_msg) = raw_rx.recv().await {
-			if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw_msg.text) {
-				if val.get("id").and_then(|v| v.as_i64()) == Some(attach_id) {
-					if let Some(sid) = val
-						.get("result")
-						.and_then(|r| r.get("sessionId"))
-						.and_then(|s| s.as_str())
-					{
-						return Ok(sid.to_string());
-					}
-					return Err("attachToTarget failed".to_string());
+			if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw_msg.text)
+				&& val.get("id").and_then(|v| v.as_i64()) == Some(attach_id)
+			{
+				if let Some(sid) = val
+					.get("result")
+					.and_then(|r| r.get("sessionId"))
+					.and_then(|s| s.as_str())
+				{
+					return Ok(sid.to_string());
 				}
+				return Err("attachToTarget failed".to_string());
 			}
 		}
 		Err("raw message channel closed".to_string())

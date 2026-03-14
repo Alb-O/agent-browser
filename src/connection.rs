@@ -88,17 +88,17 @@ impl Connection {
 /// Priority: AGENT_BROWSER_SOCKET_DIR > XDG_RUNTIME_DIR > ~/.agent-browser > tmpdir
 pub fn get_socket_dir() -> PathBuf {
 	// 1. Explicit override (ignore empty string)
-	if let Ok(dir) = env::var("AGENT_BROWSER_SOCKET_DIR") {
-		if !dir.is_empty() {
-			return PathBuf::from(dir);
-		}
+	if let Ok(dir) = env::var("AGENT_BROWSER_SOCKET_DIR")
+		&& !dir.is_empty()
+	{
+		return PathBuf::from(dir);
 	}
 
 	// 2. XDG_RUNTIME_DIR (Linux standard, ignore empty string)
-	if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-		if !runtime_dir.is_empty() {
-			return PathBuf::from(runtime_dir).join("agent-browser");
-		}
+	if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR")
+		&& !runtime_dir.is_empty()
+	{
+		return PathBuf::from(runtime_dir).join("agent-browser");
 	}
 
 	// 3. Home directory fallback (like Docker Desktop's ~/.docker/run/)
@@ -159,17 +159,17 @@ fn is_daemon_running(session: &str) -> bool {
 	if !pid_path.exists() {
 		return false;
 	}
-	if let Ok(pid_str) = fs::read_to_string(&pid_path) {
-		if let Ok(pid) = pid_str.trim().parse::<i32>() {
-			unsafe {
-				if libc::kill(pid, 0) == 0 {
-					return true;
-				}
-				// EPERM means the process exists but we lack permission to
-				// signal it (e.g. inside a macOS sandbox). Only ESRCH means
-				// the process is genuinely gone.
-				return std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH);
+	if let Ok(pid_str) = fs::read_to_string(&pid_path)
+		&& let Ok(pid) = pid_str.trim().parse::<i32>()
+	{
+		unsafe {
+			if libc::kill(pid, 0) == 0 {
+				return true;
 			}
+			// EPERM means the process exists but we lack permission to
+			// signal it (e.g. inside a macOS sandbox). Only ESRCH means
+			// the process is genuinely gone.
+			return std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH);
 		}
 	}
 	false
@@ -414,29 +414,29 @@ pub fn ensure_daemon(session: &str, opts: &DaemonOptions) -> Result<DaemonResult
 		}
 
 		// Detect early daemon exit and surface the real error from stderr
-		if let Some(ref mut child) = daemon_child {
-			if let Ok(Some(_)) = child.try_wait() {
-				let mut stderr_output = String::new();
-				if let Some(mut stderr) = child.stderr.take() {
-					let _ = stderr.read_to_string(&mut stderr_output);
-				}
-				let stderr_trimmed = stderr_output.trim();
-				if !stderr_trimmed.is_empty() {
-					let msg = if stderr_trimmed.len() > 500 {
-						let mut end = 500;
-						while !stderr_trimmed.is_char_boundary(end) {
-							end -= 1;
-						}
-						&stderr_trimmed[..end]
-					} else {
-						stderr_trimmed
-					};
-					return Err(format!("Daemon process exited during startup:\n{}", msg));
-				}
-				return Err("Daemon process exited during startup with no error output. \
-                     Re-run with --debug for more details."
-					.to_string());
+		if let Some(ref mut child) = daemon_child
+			&& let Ok(Some(_)) = child.try_wait()
+		{
+			let mut stderr_output = String::new();
+			if let Some(mut stderr) = child.stderr.take() {
+				let _ = stderr.read_to_string(&mut stderr_output);
 			}
+			let stderr_trimmed = stderr_output.trim();
+			if !stderr_trimmed.is_empty() {
+				let msg = if stderr_trimmed.len() > 500 {
+					let mut end = 500;
+					while !stderr_trimmed.is_char_boundary(end) {
+						end -= 1;
+					}
+					&stderr_trimmed[..end]
+				} else {
+					stderr_trimmed
+				};
+				return Err(format!("Daemon process exited during startup:\n{}", msg));
+			}
+			return Err("Daemon process exited during startup with no error output. \
+                     Re-run with --debug for more details."
+				.to_string());
 		}
 
 		thread::sleep(Duration::from_millis(100));

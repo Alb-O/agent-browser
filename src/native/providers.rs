@@ -263,12 +263,12 @@ async fn connect_kernel() -> Result<(String, Option<ProviderSession>), String> {
 		"timeout_seconds": timeout_seconds,
 	});
 
-	if let Ok(profile) = env::var("KERNEL_PROFILE_NAME") {
-		if !profile.is_empty() {
-			body.as_object_mut()
-				.unwrap()
-				.insert("profile".to_string(), json!(profile));
-		}
+	if let Ok(profile) = env::var("KERNEL_PROFILE_NAME")
+		&& !profile.is_empty()
+	{
+		body.as_object_mut()
+			.unwrap()
+			.insert("profile".to_string(), json!(profile));
 	}
 
 	let client = reqwest::Client::new();

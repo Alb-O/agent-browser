@@ -80,16 +80,16 @@ impl ActionPolicy {
 
 	/// Check whether an action is allowed, denied, or requires confirmation.
 	pub fn check(&self, action: &str) -> PolicyResult {
-		if let Some(deny) = &self.deny {
-			if deny.iter().any(|a| a == action) {
-				return PolicyResult::Deny(format!("Action '{}' is denied by policy", action));
-			}
+		if let Some(deny) = &self.deny
+			&& deny.iter().any(|a| a == action)
+		{
+			return PolicyResult::Deny(format!("Action '{}' is denied by policy", action));
 		}
 
-		if let Some(confirm) = &self.confirm {
-			if confirm.iter().any(|a| a == action) {
-				return PolicyResult::RequiresConfirmation;
-			}
+		if let Some(confirm) = &self.confirm
+			&& confirm.iter().any(|a| a == action)
+		{
+			return PolicyResult::RequiresConfirmation;
 		}
 
 		if let Some(allow) = &self.allow {
@@ -103,10 +103,10 @@ impl ActionPolicy {
 					return PolicyResult::Deny(format!("Action '{}' is not in the allow list", action));
 				}
 			}
-		} else if let Some(ref default) = self.default {
-			if default.eq_ignore_ascii_case("deny") {
-				return PolicyResult::Deny(format!("Action '{}' denied: default policy is deny", action));
-			}
+		} else if let Some(ref default) = self.default
+			&& default.eq_ignore_ascii_case("deny")
+		{
+			return PolicyResult::Deny(format!("Action '{}' denied: default policy is deny", action));
 		}
 
 		PolicyResult::Allow

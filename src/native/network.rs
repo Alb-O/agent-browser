@@ -130,18 +130,17 @@ pub async fn sanitize_existing_pages(client: &CdpClient, pages: &[super::browser
 		if page.url.is_empty() || page.url == "about:blank" {
 			continue;
 		}
-		if let Ok(parsed) = url::Url::parse(&page.url) {
-			if let Some(hostname) = parsed.host_str() {
-				if !filter.is_allowed(hostname) {
-					let _ = client
-						.send_command(
-							"Page.navigate",
-							Some(json!({ "url": "about:blank" })),
-							Some(&page.session_id),
-						)
-						.await;
-				}
-			}
+		if let Ok(parsed) = url::Url::parse(&page.url)
+			&& let Some(hostname) = parsed.host_str()
+			&& !filter.is_allowed(hostname)
+		{
+			let _ = client
+				.send_command(
+					"Page.navigate",
+					Some(json!({ "url": "about:blank" })),
+					Some(&page.session_id),
+				)
+				.await;
 		}
 	}
 }

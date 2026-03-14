@@ -40,12 +40,10 @@ pub fn validate_launch_options(
 	if storage_state.is_some() && has_extensions {
 		return Err("Cannot use storage_state with extensions".to_string());
 	}
-	if allow_file_access {
-		if let Some(path) = executable_path {
-			let lower = path.to_lowercase();
-			if lower.contains("firefox") || lower.contains("webkit") || lower.contains("safari") {
-				return Err("allow_file_access is not supported with non-Chromium browsers".to_string());
-			}
+	if allow_file_access && let Some(path) = executable_path {
+		let lower = path.to_lowercase();
+		if lower.contains("firefox") || lower.contains("webkit") || lower.contains("safari") {
+			return Err("allow_file_access is not supported with non-Chromium browsers".to_string());
 		}
 	}
 	Ok(())
@@ -488,10 +486,8 @@ impl BrowserManager {
 									}
 								}
 							}
-							"Page.loadEventFired" => {
-								if p.is_empty() {
-									idle_start = Some(tokio::time::Instant::now());
-								}
+							"Page.loadEventFired" if p.is_empty() => {
+								idle_start = Some(tokio::time::Instant::now());
 							}
 							_ => {}
 						}
@@ -507,10 +503,10 @@ impl BrowserManager {
 					}
 				}
 
-				if let Some(start) = idle_start {
-					if start.elapsed() >= tokio::time::Duration::from_millis(500) {
-						return Ok(());
-					}
+				if let Some(start) = idle_start
+					&& start.elapsed() >= tokio::time::Duration::from_millis(500)
+				{
+					return Ok(());
 				}
 			}
 

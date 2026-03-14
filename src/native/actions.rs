@@ -182,17 +182,16 @@ impl DaemonState {
 					// Target events are not session-scoped; handle them first
 					match event.method.as_str() {
 						"Target.targetCreated" => {
-							if let Ok(te) = serde_json::from_value::<TargetCreatedEvent>(event.params.clone()) {
-								if (te.target_info.target_type == "page" || te.target_info.target_type == "webview")
-									&& !te.target_info.url.is_empty()
-								{
-									let already_tracked = self
-										.browser
-										.as_ref()
-										.is_none_or(|b| b.has_target(&te.target_info.target_id));
-									if !already_tracked {
-										new_targets.push(te);
-									}
+							if let Ok(te) = serde_json::from_value::<TargetCreatedEvent>(event.params.clone())
+								&& (te.target_info.target_type == "page" || te.target_info.target_type == "webview")
+								&& !te.target_info.url.is_empty()
+							{
+								let already_tracked = self
+									.browser
+									.as_ref()
+									.is_none_or(|b| b.has_target(&te.target_info.target_id));
+								if !already_tracked {
+									new_targets.push(te);
 								}
 							}
 							continue;
@@ -309,14 +308,12 @@ impl DaemonState {
 							}
 						}
 						"Page.screencastFrame" => {
-							if self.recording_state.active {
-								if let Some(data) = event.params.get("data").and_then(|v| v.as_str()) {
-									if let Ok(bytes) =
-										base64::Engine::decode(&base64::engine::general_purpose::STANDARD, data)
-									{
-										recording::recording_add_frame(&mut self.recording_state, &bytes);
-									}
-								}
+							if self.recording_state.active
+								&& let Some(data) = event.params.get("data").and_then(|v| v.as_str())
+								&& let Ok(bytes) =
+									base64::Engine::decode(&base64::engine::general_purpose::STANDARD, data)
+							{
+								recording::recording_add_frame(&mut self.recording_state, &bytes);
 							}
 							if let Some(sid) = event.params.get("sessionId").and_then(|v| v.as_i64()) {
 								pending_acks.push(sid);
@@ -373,13 +370,12 @@ pub async fn execute_command(cmd: &Value, state: &mut DaemonState) -> Value {
 
 	// Drain pending CDP events (console, errors, screencast frames, target lifecycle, fetch)
 	let (pending_acks, new_targets, destroyed_targets, fetch_paused) = state.drain_cdp_events();
-	if !pending_acks.is_empty() {
-		if let Some(ref browser) = state.browser {
-			if let Ok(session_id) = browser.active_session_id() {
-				for ack_sid in pending_acks {
-					let _ = stream::ack_screencast_frame(&browser.client, session_id, ack_sid).await;
-				}
-			}
+	if !pending_acks.is_empty()
+		&& let Some(ref browser) = state.browser
+		&& let Ok(session_id) = browser.active_session_id()
+	{
+		for ack_sid in pending_acks {
+			let _ = stream::ack_screencast_frame(&browser.client, session_id, ack_sid).await;
 		}
 	}
 
@@ -452,24 +448,24 @@ pub async fn execute_command(cmd: &Value, state: &mut DaemonState) -> Value {
 	}
 
 	// Check AGENT_BROWSER_CONFIRM_ACTIONS (category-based, independent of policy file)
-	if action != "confirm" && action != "deny" {
-		if let Some(ref ca) = state.confirm_actions {
-			if ca.requires_confirmation(action) {
-				state.pending_confirmation = Some(PendingConfirmation {
-					action: action.to_string(),
-					cmd: cmd.clone(),
-				});
-				return json!({
-					"id": id,
-					"success": true,
-					"data": {
-						"confirmation_required": true,
-						"confirmation_id": id,
-						"action": action,
-					},
-				});
-			}
-		}
+	if action != "confirm"
+		&& action != "deny"
+		&& let Some(ref ca) = state.confirm_actions
+		&& ca.requires_confirmation(action)
+	{
+		state.pending_confirmation = Some(PendingConfirmation {
+			action: action.to_string(),
+			cmd: cmd.clone(),
+		});
+		return json!({
+			"id": id,
+			"success": true,
+			"data": {
+				"confirmation_required": true,
+				"confirmation_id": id,
+				"action": action,
+			},
+		});
 	}
 
 	let skip_launch = matches!(
@@ -511,10 +507,10 @@ pub async fn execute_command(cmd: &Value, state: &mut DaemonState) -> Value {
 			}
 		}
 
-		if let Some(ref mut mgr) = state.browser {
-			if mgr.page_count() == 0 {
-				let _ = mgr.ensure_page().await;
-			}
+		if let Some(ref mut mgr) = state.browser
+			&& mgr.page_count() == 0
+		{
+			let _ = mgr.ensure_page().await;
 		}
 	}
 
@@ -762,15 +758,15 @@ fn launch_options_from_env() -> LaunchOptions {
 }
 
 fn daemon_state_from_env(state: &mut DaemonState) {
-	if let Ok(name) = env::var("AGENT_BROWSER_SESSION_NAME") {
-		if !name.is_empty() {
-			state.session_name = Some(name);
-		}
+	if let Ok(name) = env::var("AGENT_BROWSER_SESSION_NAME")
+		&& !name.is_empty()
+	{
+		state.session_name = Some(name);
 	}
-	if let Ok(domains) = env::var("AGENT_BROWSER_ALLOWED_DOMAINS") {
-		if !domains.is_empty() {
-			state.domain_filter = Some(DomainFilter::new(&domains));
-		}
+	if let Ok(domains) = env::var("AGENT_BROWSER_ALLOWED_DOMAINS")
+		&& !domains.is_empty()
+	{
+		state.domain_filter = Some(DomainFilter::new(&domains));
 	}
 	if state.policy.is_none() {
 		state.policy = ActionPolicy::load_if_exists();
@@ -782,12 +778,11 @@ async fn try_auto_restore_state(state: &mut DaemonState) {
 		Some(n) if !n.is_empty() => n.to_string(),
 		_ => return,
 	};
-	if let Some(path) = state::find_auto_state_file(&session_name) {
-		if let Some(ref mgr) = state.browser {
-			if let Ok(session_id) = mgr.active_session_id() {
-				let _ = state::load_state(&mgr.client, session_id, &path).await;
-			}
-		}
+	if let Some(path) = state::find_auto_state_file(&session_name)
+		&& let Some(ref mgr) = state.browser
+		&& let Ok(session_id) = mgr.active_session_id()
+	{
+		let _ = state::load_state(&mgr.client, session_id, &path).await;
 	}
 }
 
@@ -939,13 +934,12 @@ async fn handle_launch(cmd: &Value, state: &mut DaemonState) -> Result<Value, St
 	state.subscribe_to_browser_events();
 	state.update_stream_client().await;
 
-	if let Some(ref filter) = state.domain_filter {
-		if let Some(ref mgr) = state.browser {
-			if let Ok(session_id) = mgr.active_session_id() {
-				let _ = network::install_domain_filter(&mgr.client, session_id, &filter.allowed_domains).await;
-				network::sanitize_existing_pages(&mgr.client, &mgr.pages_list(), filter).await;
-			}
-		}
+	if let Some(ref filter) = state.domain_filter
+		&& let Some(ref mgr) = state.browser
+		&& let Ok(session_id) = mgr.active_session_id()
+	{
+		let _ = network::install_domain_filter(&mgr.client, session_id, &filter.allowed_domains).await;
+		network::sanitize_existing_pages(&mgr.client, &mgr.pages_list(), filter).await;
 	}
 
 	Ok(json!({ "launched": true }))
@@ -1037,14 +1031,14 @@ async fn handle_navigate(cmd: &Value, state: &mut DaemonState) -> Result<Value, 
 	}
 
 	// WebDriver backend path
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			state.ref_map.clear();
-			wb.navigate(url).await?;
-			let new_url = wb.get_url().await.unwrap_or_else(|_| url.to_string());
-			let title = wb.get_title().await.unwrap_or_default();
-			return Ok(json!({ "url": new_url, "title": title }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		state.ref_map.clear();
+		wb.navigate(url).await?;
+		let new_url = wb.get_url().await.unwrap_or_else(|_| url.to_string());
+		let title = wb.get_title().await.unwrap_or_default();
+		return Ok(json!({ "url": new_url, "title": title }));
 	}
 
 	let mgr = state.browser.as_mut().ok_or("Browser not launched")?;
@@ -1069,22 +1063,22 @@ async fn handle_navigate(cmd: &Value, state: &mut DaemonState) -> Result<Value, 
 	state.ref_map.clear();
 	let result = mgr.navigate(url, wait_until).await;
 
-	if scoped_headers.is_some() {
-		if let Ok(session_id) = mgr.active_session_id() {
-			let empty: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-			let _ = network::set_extra_headers(&mgr.client, session_id, &empty).await;
-		}
+	if scoped_headers.is_some()
+		&& let Ok(session_id) = mgr.active_session_id()
+	{
+		let empty: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+		let _ = network::set_extra_headers(&mgr.client, session_id, &empty).await;
 	}
 
 	result
 }
 
 async fn handle_url(state: &DaemonState) -> Result<Value, String> {
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			let url = wb.get_url().await?;
-			return Ok(json!({ "url": url }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		let url = wb.get_url().await?;
+		return Ok(json!({ "url": url }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	let url = mgr.get_url().await?;
@@ -1134,11 +1128,11 @@ fn open_url_in_browser(url: &str) {
 }
 
 async fn handle_title(state: &DaemonState) -> Result<Value, String> {
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			let title = wb.get_title().await?;
-			return Ok(json!({ "title": title }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		let title = wb.get_title().await?;
+		return Ok(json!({ "title": title }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	let title = mgr.get_title().await?;
@@ -1146,12 +1140,12 @@ async fn handle_title(state: &DaemonState) -> Result<Value, String> {
 }
 
 async fn handle_content(state: &DaemonState) -> Result<Value, String> {
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			let html = wb.get_content().await?;
-			let url = wb.get_url().await.unwrap_or_default();
-			return Ok(json!({ "html": html, "origin": url }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		let html = wb.get_content().await?;
+		let url = wb.get_url().await.unwrap_or_default();
+		return Ok(json!({ "html": html, "origin": url }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	let html = mgr.get_content().await?;
@@ -1160,16 +1154,16 @@ async fn handle_content(state: &DaemonState) -> Result<Value, String> {
 }
 
 async fn handle_evaluate(cmd: &Value, state: &DaemonState) -> Result<Value, String> {
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			let script = cmd
-				.get("script")
-				.and_then(|v| v.as_str())
-				.ok_or("Missing 'script' parameter")?;
-			let result = wb.evaluate(script).await?;
-			let url = wb.get_url().await.unwrap_or_default();
-			return Ok(json!({ "result": result, "origin": url }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		let script = cmd
+			.get("script")
+			.and_then(|v| v.as_str())
+			.ok_or("Missing 'script' parameter")?;
+		let result = wb.evaluate(script).await?;
+		let url = wb.get_url().await.unwrap_or_default();
+		return Ok(json!({ "result": result, "origin": url }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	let script = cmd
@@ -1183,19 +1177,18 @@ async fn handle_evaluate(cmd: &Value, state: &DaemonState) -> Result<Value, Stri
 }
 
 async fn handle_close(state: &mut DaemonState) -> Result<Value, String> {
-	if let Some(ref mgr) = state.browser {
-		if let Some(ref session_name) = state.session_name {
-			if let Ok(session_id) = mgr.active_session_id() {
-				let _ = state::save_state(
-					&mgr.client,
-					session_id,
-					None,
-					Some(session_name.as_str()),
-					&state.session_id,
-				)
-				.await;
-			}
-		}
+	if let Some(ref mgr) = state.browser
+		&& let Some(ref session_name) = state.session_name
+		&& let Ok(session_id) = mgr.active_session_id()
+	{
+		let _ = state::save_state(
+			&mgr.client,
+			session_id,
+			None,
+			Some(session_name.as_str()),
+			&state.session_id,
+		)
+		.await;
 	}
 	if let Some(ref mut mgr) = state.browser {
 		mgr.close().await?;
@@ -1252,32 +1245,32 @@ async fn handle_snapshot(cmd: &Value, state: &mut DaemonState) -> Result<Value, 
 async fn handle_screenshot(cmd: &Value, state: &mut DaemonState) -> Result<Value, String> {
 	let annotate = cmd.get("annotate").and_then(|v| v.as_bool()).unwrap_or(false);
 
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			if annotate {
-				return Err("Annotated screenshots are not yet implemented on the WebDriver backend".to_string());
-			}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		if annotate {
+			return Err("Annotated screenshots are not yet implemented on the WebDriver backend".to_string());
+		}
 
-			let base64_data = wb.screenshot().await?;
-			let path = cmd.get("path").and_then(|v| v.as_str());
-			if let Some(p) = path {
-				let bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &base64_data)
-					.map_err(|e| format!("Base64 decode error: {}", e))?;
-				std::fs::write(p, bytes).map_err(|e| format!("Failed to write screenshot: {}", e))?;
-				return Ok(json!({ "path": p }));
-			}
-			let tmp = format!(
-				"/tmp/screenshot-{}.png",
-				std::time::SystemTime::now()
-					.duration_since(std::time::UNIX_EPOCH)
-					.map(|d| d.as_millis())
-					.unwrap_or(0)
-			);
+		let base64_data = wb.screenshot().await?;
+		let path = cmd.get("path").and_then(|v| v.as_str());
+		if let Some(p) = path {
 			let bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &base64_data)
 				.map_err(|e| format!("Base64 decode error: {}", e))?;
-			std::fs::write(&tmp, bytes).map_err(|e| format!("Failed to write screenshot: {}", e))?;
-			return Ok(json!({ "path": tmp }));
+			std::fs::write(p, bytes).map_err(|e| format!("Failed to write screenshot: {}", e))?;
+			return Ok(json!({ "path": p }));
 		}
+		let tmp = format!(
+			"/tmp/screenshot-{}.png",
+			std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.map(|d| d.as_millis())
+				.unwrap_or(0)
+		);
+		let bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &base64_data)
+			.map_err(|e| format!("Base64 decode error: {}", e))?;
+		std::fs::write(&tmp, bytes).map_err(|e| format!("Failed to write screenshot: {}", e))?;
+		return Ok(json!({ "path": tmp }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	let session_id = mgr.active_session_id()?.to_string();
@@ -1330,11 +1323,11 @@ async fn handle_click(cmd: &Value, state: &mut DaemonState) -> Result<Value, Str
 		.and_then(|v| v.as_str())
 		.ok_or("Missing 'selector' parameter")?;
 
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			wb.click(selector).await?;
-			return Ok(json!({ "clicked": selector }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		wb.click(selector).await?;
+		return Ok(json!({ "clicked": selector }));
 	}
 
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
@@ -1403,11 +1396,11 @@ async fn handle_fill(cmd: &Value, state: &mut DaemonState) -> Result<Value, Stri
 		.and_then(|v| v.as_str())
 		.ok_or("Missing 'value' parameter")?;
 
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			wb.fill(selector, value).await?;
-			return Ok(json!({ "filled": selector }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		wb.fill(selector, value).await?;
+		return Ok(json!({ "filled": selector }));
 	}
 
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
@@ -1638,14 +1631,14 @@ async fn handle_ischecked(cmd: &Value, state: &mut DaemonState) -> Result<Value,
 }
 
 async fn handle_back(state: &mut DaemonState) -> Result<Value, String> {
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			wb.back().await?;
-			tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-			let url = wb.get_url().await.unwrap_or_default();
-			state.ref_map.clear();
-			return Ok(json!({ "url": url }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		wb.back().await?;
+		tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+		let url = wb.get_url().await.unwrap_or_default();
+		state.ref_map.clear();
+		return Ok(json!({ "url": url }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	mgr.evaluate("history.back()", None).await?;
@@ -1656,14 +1649,14 @@ async fn handle_back(state: &mut DaemonState) -> Result<Value, String> {
 }
 
 async fn handle_forward(state: &mut DaemonState) -> Result<Value, String> {
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			wb.forward().await?;
-			tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-			let url = wb.get_url().await.unwrap_or_default();
-			state.ref_map.clear();
-			return Ok(json!({ "url": url }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		wb.forward().await?;
+		tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+		let url = wb.get_url().await.unwrap_or_default();
+		state.ref_map.clear();
+		return Ok(json!({ "url": url }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	mgr.evaluate("history.forward()", None).await?;
@@ -1674,14 +1667,14 @@ async fn handle_forward(state: &mut DaemonState) -> Result<Value, String> {
 }
 
 async fn handle_reload(state: &mut DaemonState) -> Result<Value, String> {
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			wb.reload().await?;
-			tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-			let url = wb.get_url().await.unwrap_or_default();
-			state.ref_map.clear();
-			return Ok(json!({ "url": url }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		wb.reload().await?;
+		tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+		let url = wb.get_url().await.unwrap_or_default();
+		state.ref_map.clear();
+		return Ok(json!({ "url": url }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	let session_id = mgr.active_session_id()?.to_string();
@@ -1807,11 +1800,11 @@ async fn poll_until_true(
 // ---------------------------------------------------------------------------
 
 async fn handle_cookies_get(cmd: &Value, state: &DaemonState) -> Result<Value, String> {
-	if let Some(ref wb) = state.webdriver_backend {
-		if state.browser.is_none() {
-			let cookies_list = wb.get_cookies().await?;
-			return Ok(json!({ "cookies": cookies_list }));
-		}
+	if let Some(ref wb) = state.webdriver_backend
+		&& state.browser.is_none()
+	{
+		let cookies_list = wb.get_cookies().await?;
+		return Ok(json!({ "cookies": cookies_list }));
 	}
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;
 	let session_id = mgr.active_session_id()?.to_string();
@@ -1837,10 +1830,10 @@ async fn handle_cookies_set(cmd: &Value, state: &DaemonState) -> Result<Value, S
 		for key in &[
 			"name", "value", "domain", "path", "expires", "httpOnly", "secure", "sameSite", "url",
 		] {
-			if let Some(v) = cmd.get(*key) {
-				if !v.is_null() {
-					cookie.insert(key.to_string(), v.clone());
-				}
+			if let Some(v) = cmd.get(*key)
+				&& !v.is_null()
+			{
+				cookie.insert(key.to_string(), v.clone());
 			}
 		}
 		vec![Value::Object(cookie)]
@@ -2339,19 +2332,18 @@ async fn handle_recording_start(cmd: &Value, state: &mut DaemonState) -> Result<
 	mgr.enable_domains_pub(&new_session_id).await?;
 
 	// Transfer cookies to new context
-	if let Some(ref cr) = cookies_result {
-		if let Some(cookie_arr) = cr.get("cookies").and_then(|v| v.as_array()) {
-			if !cookie_arr.is_empty() {
-				let _ = mgr
-					.client
-					.send_command(
-						"Network.setCookies",
-						Some(json!({ "cookies": cookie_arr })),
-						Some(&new_session_id),
-					)
-					.await;
-			}
-		}
+	if let Some(ref cr) = cookies_result
+		&& let Some(cookie_arr) = cr.get("cookies").and_then(|v| v.as_array())
+		&& !cookie_arr.is_empty()
+	{
+		let _ = mgr
+			.client
+			.send_command(
+				"Network.setCookies",
+				Some(json!({ "cookies": cookie_arr })),
+				Some(&new_session_id),
+			)
+			.await;
 	}
 
 	// Add page and switch to it
@@ -2384,23 +2376,22 @@ async fn handle_recording_start(cmd: &Value, state: &mut DaemonState) -> Result<
 async fn handle_recording_stop(state: &mut DaemonState) -> Result<Value, String> {
 	// Stop screencast
 	if state.screencasting {
-		if let Some(ref browser) = state.browser {
-			if let Ok(session_id) = browser.active_session_id() {
-				let _ = stream::stop_screencast(&browser.client, session_id).await;
-			}
+		if let Some(ref browser) = state.browser
+			&& let Ok(session_id) = browser.active_session_id()
+		{
+			let _ = stream::stop_screencast(&browser.client, session_id).await;
 		}
 		state.screencasting = false;
 	}
 
 	// Drain remaining frames before stopping
 	let (ack_ids, ..) = state.drain_cdp_events();
-	if !ack_ids.is_empty() {
-		if let Some(ref browser) = state.browser {
-			if let Ok(session_id) = browser.active_session_id() {
-				for ack_sid in ack_ids {
-					let _ = stream::ack_screencast_frame(&browser.client, session_id, ack_sid).await;
-				}
-			}
+	if !ack_ids.is_empty()
+		&& let Some(ref browser) = state.browser
+		&& let Ok(session_id) = browser.active_session_id()
+	{
+		for ack_sid in ack_ids {
+			let _ = stream::ack_screencast_frame(&browser.client, session_id, ack_sid).await;
 		}
 	}
 
@@ -2415,10 +2406,10 @@ async fn handle_recording_restart(cmd: &Value, state: &mut DaemonState) -> Resul
 
 	// Stop screencast, restart recording, start screencast again
 	if state.screencasting {
-		if let Some(ref browser) = state.browser {
-			if let Ok(session_id) = browser.active_session_id() {
-				let _ = stream::stop_screencast(&browser.client, session_id).await;
-			}
+		if let Some(ref browser) = state.browser
+			&& let Ok(session_id) = browser.active_session_id()
+		{
+			let _ = stream::stop_screencast(&browser.client, session_id).await;
 		}
 		state.screencasting = false;
 	}
@@ -2575,13 +2566,13 @@ async fn handle_tap(cmd: &Value, state: &mut DaemonState) -> Result<Value, Strin
 	let selector = cmd.get("selector").and_then(|v| v.as_str());
 
 	// Route through Appium for iOS/WebDriver using coordinate-based tap
-	if let Some(ref appium) = state.appium {
-		if state.browser.is_none() {
-			let x = cmd.get("x").and_then(|v| v.as_f64()).unwrap_or(200.0);
-			let y = cmd.get("y").and_then(|v| v.as_f64()).unwrap_or(200.0);
-			appium.tap(x, y).await?;
-			return Ok(json!({ "tapped": true, "x": x, "y": y }));
-		}
+	if let Some(ref appium) = state.appium
+		&& state.browser.is_none()
+	{
+		let x = cmd.get("x").and_then(|v| v.as_f64()).unwrap_or(200.0);
+		let y = cmd.get("y").and_then(|v| v.as_f64()).unwrap_or(200.0);
+		appium.tap(x, y).await?;
+		return Ok(json!({ "tapped": true, "x": x, "y": y }));
 	}
 
 	let sel = selector.ok_or("Missing 'selector' parameter")?;
@@ -3141,15 +3132,15 @@ async fn handle_frame(cmd: &Value, state: &mut DaemonState) -> Result<Value, Str
 		let frame_url = frame.get("url").and_then(|v| v.as_str()).unwrap_or("");
 		let frame_id = frame.get("id").and_then(|v| v.as_str())?;
 
-		if let Some(n) = name {
-			if frame_name == n {
-				return Some(frame_id.to_string());
-			}
+		if let Some(n) = name
+			&& frame_name == n
+		{
+			return Some(frame_id.to_string());
 		}
-		if let Some(u) = url {
-			if frame_url.contains(u) {
-				return Some(frame_id.to_string());
-			}
+		if let Some(u) = url
+			&& frame_url.contains(u)
+		{
+			return Some(frame_id.to_string());
 		}
 
 		if let Some(children) = tree.get("childFrames").and_then(|v| v.as_array()) {
@@ -3370,16 +3361,16 @@ async fn handle_getbyrole(cmd: &Value, state: &mut DaemonState) -> Result<Value,
 	let result = execute_subaction(cmd, state, selector).await;
 
 	// Clean up the marker attribute
-	if let Some(ref browser) = state.browser {
-		if let Ok(sid) = browser.active_session_id() {
-			let _ = browser
-				.evaluate(
-					"document.querySelector('[data-agent-browser-located]')?.removeAttribute('data-agent-browser-located')",
-					None,
-				)
-				.await;
-			let _ = sid;
-		}
+	if let Some(ref browser) = state.browser
+		&& let Ok(sid) = browser.active_session_id()
+	{
+		let _ = browser
+			.evaluate(
+				"document.querySelector('[data-agent-browser-located]')?.removeAttribute('data-agent-browser-located')",
+				None,
+			)
+			.await;
+		let _ = sid;
 	}
 
 	result
@@ -3766,45 +3757,44 @@ async fn handle_responsebody(cmd: &Value, state: &DaemonState) -> Result<Value, 
 
 		match tokio::time::timeout(remaining, rx.recv()).await {
 			Ok(Ok(event)) => {
-				if event.method == "Network.responseReceived" && event.session_id.as_deref() == Some(&session_id) {
-					if let Some(resp_url) = event
+				if event.method == "Network.responseReceived"
+					&& event.session_id.as_deref() == Some(&session_id)
+					&& let Some(resp_url) = event
 						.params
 						.get("response")
 						.and_then(|r| r.get("url"))
 						.and_then(|u| u.as_str())
-					{
-						if resp_url.contains(url_pattern) {
-							let request_id = event
-								.params
-								.get("requestId")
-								.and_then(|v| v.as_str())
-								.ok_or("No requestId in response event")?;
-							let status = event
-								.params
-								.get("response")
-								.and_then(|r| r.get("status"))
-								.and_then(|v| v.as_i64())
-								.unwrap_or(0);
-							let headers = event
-								.params
-								.get("response")
-								.and_then(|r| r.get("headers"))
-								.cloned()
-								.unwrap_or(json!({}));
+					&& resp_url.contains(url_pattern)
+				{
+					let request_id = event
+						.params
+						.get("requestId")
+						.and_then(|v| v.as_str())
+						.ok_or("No requestId in response event")?;
+					let status = event
+						.params
+						.get("response")
+						.and_then(|r| r.get("status"))
+						.and_then(|v| v.as_i64())
+						.unwrap_or(0);
+					let headers = event
+						.params
+						.get("response")
+						.and_then(|r| r.get("headers"))
+						.cloned()
+						.unwrap_or(json!({}));
 
-							let body_result = mgr
-								.client
-								.send_command(
-									"Network.getResponseBody",
-									Some(json!({ "requestId": request_id })),
-									Some(&session_id),
-								)
-								.await?;
-							let body = body_result.get("body").and_then(|v| v.as_str()).unwrap_or("");
+					let body_result = mgr
+						.client
+						.send_command(
+							"Network.getResponseBody",
+							Some(json!({ "requestId": request_id })),
+							Some(&session_id),
+						)
+						.await?;
+					let body = body_result.get("body").and_then(|v| v.as_str()).unwrap_or("");
 
-							return Ok(json!({ "body": body, "status": status, "headers": headers }));
-						}
-					}
+					return Ok(json!({ "body": body, "status": status, "headers": headers }));
 				}
 			}
 			Ok(Err(_)) => return Err("Event stream closed".to_string()),
@@ -3980,22 +3970,21 @@ async fn handle_video_stop(state: &mut DaemonState) -> Result<Value, String> {
 	}
 
 	if state.screencasting {
-		if let Some(ref browser) = state.browser {
-			if let Ok(session_id) = browser.active_session_id() {
-				let _ = stream::stop_screencast(&browser.client, session_id).await;
-			}
+		if let Some(ref browser) = state.browser
+			&& let Ok(session_id) = browser.active_session_id()
+		{
+			let _ = stream::stop_screencast(&browser.client, session_id).await;
 		}
 		state.screencasting = false;
 	}
 
 	let (ack_ids, ..) = state.drain_cdp_events();
-	if !ack_ids.is_empty() {
-		if let Some(ref browser) = state.browser {
-			if let Ok(session_id) = browser.active_session_id() {
-				for ack_sid in ack_ids {
-					let _ = stream::ack_screencast_frame(&browser.client, session_id, ack_sid).await;
-				}
-			}
+	if !ack_ids.is_empty()
+		&& let Some(ref browser) = state.browser
+		&& let Ok(session_id) = browser.active_session_id()
+	{
+		for ack_sid in ack_ids {
+			let _ = stream::ack_screencast_frame(&browser.client, session_id, ack_sid).await;
 		}
 	}
 
@@ -4064,75 +4053,74 @@ async fn resolve_fetch_paused(
 	let session_id = &paused.session_id;
 
 	// Domain filter check (takes priority over routes)
-	if let Some(filter) = domain_filter {
-		if let Ok(parsed) = url::Url::parse(&paused.url) {
-			let scheme = parsed.scheme();
-			if scheme != "http" && scheme != "https" {
-				if paused.resource_type.eq_ignore_ascii_case("document") {
-					let _ = browser
-						.client
-						.send_command(
-							"Fetch.failRequest",
-							Some(json!({
-								"requestId": paused.request_id,
-								"errorReason": "BlockedByClient"
-							})),
-							Some(session_id),
-						)
-						.await;
-				} else {
-					let _ = browser
-						.client
-						.send_command(
-							"Fetch.continueRequest",
-							Some(json!({ "requestId": paused.request_id })),
-							Some(session_id),
-						)
-						.await;
-				}
-				return;
+	if let Some(filter) = domain_filter
+		&& let Ok(parsed) = url::Url::parse(&paused.url)
+	{
+		let scheme = parsed.scheme();
+		if scheme != "http" && scheme != "https" {
+			if paused.resource_type.eq_ignore_ascii_case("document") {
+				let _ = browser
+					.client
+					.send_command(
+						"Fetch.failRequest",
+						Some(json!({
+							"requestId": paused.request_id,
+							"errorReason": "BlockedByClient"
+						})),
+						Some(session_id),
+					)
+					.await;
+			} else {
+				let _ = browser
+					.client
+					.send_command(
+						"Fetch.continueRequest",
+						Some(json!({ "requestId": paused.request_id })),
+						Some(session_id),
+					)
+					.await;
 			}
+			return;
+		}
 
-			if let Some(hostname) = parsed.host_str() {
-				if !filter.is_allowed(hostname) {
-					if paused.resource_type.eq_ignore_ascii_case("document") {
-						let error_body = format!(
-							"<html><body><h1>Blocked</h1><p>Navigation to {} is not allowed by domain filter.</p></body></html>",
-							hostname
-						);
-						let encoded =
-							base64::Engine::encode(&base64::engine::general_purpose::STANDARD, error_body.as_bytes());
-						let _ = browser
-							.client
-							.send_command(
-								"Fetch.fulfillRequest",
-								Some(json!({
-									"requestId": paused.request_id,
-									"responseCode": 403,
-									"responseHeaders": [
-										{ "name": "Content-Type", "value": "text/html" },
-									],
-									"body": encoded,
-								})),
-								Some(session_id),
-							)
-							.await;
-					} else {
-						let _ = browser
-							.client
-							.send_command(
-								"Fetch.failRequest",
-								Some(json!({
-									"requestId": paused.request_id,
-									"errorReason": "BlockedByClient"
-								})),
-								Some(session_id),
-							)
-							.await;
-					}
-					return;
-				}
+		if let Some(hostname) = parsed.host_str()
+			&& !filter.is_allowed(hostname)
+		{
+			if paused.resource_type.eq_ignore_ascii_case("document") {
+				let error_body = format!(
+					"<html><body><h1>Blocked</h1><p>Navigation to {} is not allowed by domain filter.</p></body></html>",
+					hostname
+				);
+				let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, error_body.as_bytes());
+				let _ = browser
+					.client
+					.send_command(
+						"Fetch.fulfillRequest",
+						Some(json!({
+							"requestId": paused.request_id,
+							"responseCode": 403,
+							"responseHeaders": [
+								{ "name": "Content-Type", "value": "text/html" },
+							],
+							"body": encoded,
+						})),
+						Some(session_id),
+					)
+					.await;
+			} else {
+				let _ = browser
+					.client
+					.send_command(
+						"Fetch.failRequest",
+						Some(json!({
+							"requestId": paused.request_id,
+							"errorReason": "BlockedByClient"
+						})),
+						Some(session_id),
+					)
+					.await;
 			}
+			return;
 		}
 	}
 
@@ -4320,13 +4308,13 @@ async fn handle_requests(cmd: &Value, state: &mut DaemonState) -> Result<Value, 
 
 	if !state.request_tracking {
 		state.request_tracking = true;
-		if let Some(ref mgr) = state.browser {
-			if let Ok(session_id) = mgr.active_session_id() {
-				let _ = mgr
-					.client
-					.send_command_no_params("Network.enable", Some(session_id))
-					.await;
-			}
+		if let Some(ref mgr) = state.browser
+			&& let Ok(session_id) = mgr.active_session_id()
+		{
+			let _ = mgr
+				.client
+				.send_command_no_params("Network.enable", Some(session_id))
+				.await;
 		}
 	}
 
@@ -4443,11 +4431,11 @@ async fn handle_auth_login(cmd: &Value, state: &mut DaemonState) -> Result<Value
 				"!!document.querySelector({})",
 				serde_json::to_string(sel).unwrap_or_default()
 			);
-			if let Ok(val) = mgr.evaluate(&js, None).await {
-				if val.as_bool().unwrap_or(false) {
-					found = Some(sel.to_string());
-					break;
-				}
+			if let Ok(val) = mgr.evaluate(&js, None).await
+				&& val.as_bool().unwrap_or(false)
+			{
+				found = Some(sel.to_string());
+				break;
 			}
 		}
 		found.ok_or("Could not find username field")?
@@ -4468,11 +4456,11 @@ async fn handle_auth_login(cmd: &Value, state: &mut DaemonState) -> Result<Value
 				"!!document.querySelector({})",
 				serde_json::to_string(sel).unwrap_or_default()
 			);
-			if let Ok(val) = mgr.evaluate(&js, None).await {
-				if val.as_bool().unwrap_or(false) {
-					found = Some(sel.to_string());
-					break;
-				}
+			if let Ok(val) = mgr.evaluate(&js, None).await
+				&& val.as_bool().unwrap_or(false)
+			{
+				found = Some(sel.to_string());
+				break;
 			}
 		}
 		found.ok_or("Could not find submit button")?
@@ -4539,35 +4527,35 @@ async fn handle_deny(_cmd: &Value, state: &mut DaemonState) -> Result<Value, Str
 
 async fn handle_swipe(cmd: &Value, state: &mut DaemonState) -> Result<Value, String> {
 	// Route through Appium for iOS/WebDriver
-	if let Some(ref appium) = state.appium {
-		if state.browser.is_none() {
-			let start_x = cmd.get("startX").and_then(|v| v.as_f64()).unwrap_or(200.0);
-			let start_y = cmd.get("startY").and_then(|v| v.as_f64()).unwrap_or(400.0);
-			let end_x = cmd.get("endX").and_then(|v| v.as_f64()).unwrap_or(200.0);
-			let end_y = cmd.get("endY").and_then(|v| v.as_f64()).unwrap_or(100.0);
+	if let Some(ref appium) = state.appium
+		&& state.browser.is_none()
+	{
+		let start_x = cmd.get("startX").and_then(|v| v.as_f64()).unwrap_or(200.0);
+		let start_y = cmd.get("startY").and_then(|v| v.as_f64()).unwrap_or(400.0);
+		let end_x = cmd.get("endX").and_then(|v| v.as_f64()).unwrap_or(200.0);
+		let end_y = cmd.get("endY").and_then(|v| v.as_f64()).unwrap_or(100.0);
 
-			if let Some(direction) = cmd.get("direction").and_then(|v| v.as_str()) {
-				let distance = cmd.get("distance").and_then(|v| v.as_f64()).unwrap_or(300.0);
-				let (dx, dy) = match direction {
-					"up" => (0.0, -distance),
-					"down" => (0.0, distance),
-					"left" => (-distance, 0.0),
-					"right" => (distance, 0.0),
-					_ => (0.0, -distance),
-				};
-				let actual_end_x = start_x + dx;
-				let actual_end_y = start_y + dy;
-				let duration = cmd.get("duration").and_then(|v| v.as_u64()).unwrap_or(800);
-				appium
-					.swipe(start_x, start_y, actual_end_x, actual_end_y, duration)
-					.await?;
-				return Ok(json!({ "swiped": direction }));
-			}
-
+		if let Some(direction) = cmd.get("direction").and_then(|v| v.as_str()) {
+			let distance = cmd.get("distance").and_then(|v| v.as_f64()).unwrap_or(300.0);
+			let (dx, dy) = match direction {
+				"up" => (0.0, -distance),
+				"down" => (0.0, distance),
+				"left" => (-distance, 0.0),
+				"right" => (distance, 0.0),
+				_ => (0.0, -distance),
+			};
+			let actual_end_x = start_x + dx;
+			let actual_end_y = start_y + dy;
 			let duration = cmd.get("duration").and_then(|v| v.as_u64()).unwrap_or(800);
-			appium.swipe(start_x, start_y, end_x, end_y, duration).await?;
-			return Ok(json!({ "swiped": true, "from": [start_x, start_y], "to": [end_x, end_y] }));
+			appium
+				.swipe(start_x, start_y, actual_end_x, actual_end_y, duration)
+				.await?;
+			return Ok(json!({ "swiped": direction }));
 		}
+
+		let duration = cmd.get("duration").and_then(|v| v.as_u64()).unwrap_or(800);
+		appium.swipe(start_x, start_y, end_x, end_y, duration).await?;
+		return Ok(json!({ "swiped": true, "from": [start_x, start_y], "to": [end_x, end_y] }));
 	}
 
 	let mgr = state.browser.as_ref().ok_or("Browser not launched")?;

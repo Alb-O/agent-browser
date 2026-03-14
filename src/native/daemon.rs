@@ -29,30 +29,28 @@ pub async fn run_daemon(session: &str) {
 		let _ = fs::remove_file(&socket_path);
 	}
 
-	if let Ok(days_str) = env::var("AGENT_BROWSER_STATE_EXPIRE_DAYS") {
-		if let Ok(days) = days_str.parse::<u64>() {
-			if days > 0 {
-				let _ = state::state_clean(days);
-			}
-		}
+	if let Ok(days_str) = env::var("AGENT_BROWSER_STATE_EXPIRE_DAYS")
+		&& let Ok(days) = days_str.parse::<u64>()
+		&& days > 0
+	{
+		let _ = state::state_clean(days);
 	}
 
 	let mut stream_client: Option<Arc<RwLock<Option<Arc<CdpClient>>>>> = None;
-	if let Ok(port_str) = env::var("AGENT_BROWSER_STREAM_PORT") {
-		if let Ok(port) = port_str.parse::<u16>() {
-			if port > 0 {
-				match StreamServer::start_without_client(port, session.to_string()).await {
-					Ok((stream_server, client_slot)) => {
-						stream_client = Some(client_slot.clone());
-						let stream_path = socket_dir.join(format!("{}.stream", session));
-						if let Err(e) = fs::write(&stream_path, stream_server.port().to_string()) {
-							eprintln!("Failed to write .stream file: {}", e);
-						}
-					}
-					Err(e) => {
-						eprintln!("Stream server failed to start: {}", e);
-					}
+	if let Ok(port_str) = env::var("AGENT_BROWSER_STREAM_PORT")
+		&& let Ok(port) = port_str.parse::<u16>()
+		&& port > 0
+	{
+		match StreamServer::start_without_client(port, session.to_string()).await {
+			Ok((stream_server, client_slot)) => {
+				stream_client = Some(client_slot.clone());
+				let stream_path = socket_dir.join(format!("{}.stream", session));
+				if let Err(e) = fs::write(&stream_path, stream_server.port().to_string()) {
+					eprintln!("Failed to write .stream file: {}", e);
 				}
+			}
+			Err(e) => {
+				eprintln!("Stream server failed to start: {}", e);
 			}
 		}
 	}
@@ -326,16 +324,16 @@ async fn shutdown_signal() {
 }
 
 fn get_daemon_socket_dir() -> PathBuf {
-	if let Ok(dir) = env::var("AGENT_BROWSER_SOCKET_DIR") {
-		if !dir.is_empty() {
-			return PathBuf::from(dir);
-		}
+	if let Ok(dir) = env::var("AGENT_BROWSER_SOCKET_DIR")
+		&& !dir.is_empty()
+	{
+		return PathBuf::from(dir);
 	}
 
-	if let Ok(xdg) = env::var("XDG_RUNTIME_DIR") {
-		if !xdg.is_empty() {
-			return PathBuf::from(xdg).join("agent-browser");
-		}
+	if let Ok(xdg) = env::var("XDG_RUNTIME_DIR")
+		&& !xdg.is_empty()
+	{
+		return PathBuf::from(xdg).join("agent-browser");
 	}
 
 	if let Some(home) = dirs::home_dir() {

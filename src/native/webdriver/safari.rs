@@ -33,12 +33,12 @@ pub fn find_safaridriver() -> Option<PathBuf> {
 	}
 
 	// Try PATH
-	if let Ok(output) = Command::new("which").arg("safaridriver").output() {
-		if output.status.success() {
-			let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-			if !path.is_empty() {
-				return Some(PathBuf::from(path));
-			}
+	if let Ok(output) = Command::new("which").arg("safaridriver").output()
+		&& output.status.success()
+	{
+		let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+		if !path.is_empty() {
+			return Some(PathBuf::from(path));
 		}
 	}
 

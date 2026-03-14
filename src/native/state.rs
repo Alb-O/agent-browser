@@ -347,16 +347,14 @@ pub fn state_clean(max_age_days: u64) -> Result<Value, String> {
 				continue;
 			}
 
-			if let Ok(metadata) = fs::metadata(&path) {
-				if let Ok(modified) = metadata.modified() {
-					if let Ok(age) = now.duration_since(modified) {
-						if age > max_age {
-							let _ = fs::remove_file(&path);
-							deleted += 1;
-							continue;
-						}
-					}
-				}
+			if let Ok(metadata) = fs::metadata(&path)
+				&& let Ok(modified) = metadata.modified()
+				&& let Ok(age) = now.duration_since(modified)
+				&& age > max_age
+			{
+				let _ = fs::remove_file(&path);
+				deleted += 1;
+				continue;
 			}
 			kept += 1;
 		}
